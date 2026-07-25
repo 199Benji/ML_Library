@@ -1,7 +1,7 @@
 import { Routes, Route } from 'react-router-dom';
-import Login from '../components/pages/auth/login';
+import Login from '../components/pages/auth/Login';
 import Register from '../components/pages/auth/Register';
-import LandingPage from '../components/pages/landingPage';
+import LandingPage from '../components/pages/LandingPage';
 import Dashboard from '../components/pages/Dashboard'; 
 import ProtectedRoute from '../routes/ProtectedRoute';
 
