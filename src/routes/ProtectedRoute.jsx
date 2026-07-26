@@ -1,13 +1,29 @@
-import { Outlet, Navigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Navigate } from 'react-router-dom';
+import { onAuthStateChanged } from 'firebase/auth';
+import { auth } from '../firebase';
 
-const ProtectedRoute = () => {
-  // Logic to check for your access cookie.
-  // Note: Since 'HttpOnly' cookies cannot be read by JS, 
-  // you usually check for the presence of a separate 'isLoggedIn' 
-  // flag cookie or rely on a 401 response from your API.
-  const isAuthenticated = document.cookie.includes('isLoggedIn=true'); 
+const ProtectedRoute = ({ children }) => {
+  const [currentUser, setCurrentUser] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-  return isAuthenticated ? <Outlet /> : <Navigate to="/login" replace />;
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      setCurrentUser(user);
+      setLoading(false);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  if (loading) {
+    return (
+      <div style={{ color: 'var(--text-color)', textAlign: 'center', marginTop: '20vh', fontSize: '1.1rem' }}>
+        Verifying security clearance...
+      </div>
+    );
+  }
+
+  return currentUser ? children : <Navigate to="/login" replace />;
 };
 
 export default ProtectedRoute;
