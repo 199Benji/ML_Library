@@ -7,6 +7,7 @@ import Navbar from '../common/Navbar';
 import Footer from '../common/Footer';
 import { FiPlus, FiLogOut, FiSearch, FiCopy, FiCheck, FiTrash2, FiCode, FiArrowLeft, FiTerminal, FiTrendingUp, FiCpu, FiLayers, FiShield, FiEye, FiEyeOff, FiLoader } from 'react-icons/fi';
 import { motion, AnimatePresence } from 'framer-motion';
+import BlogManager from '../common/BlogManager';
 
 const Dashboard = () => {
   const [logs, setLogs] = useState([]);
@@ -587,6 +588,7 @@ const Dashboard = () => {
             </div>
           )}
         </AnimatePresence>
+      <BlogManager />
 
       </div>
       <Footer />
@@ -615,3 +617,4 @@ const labelStyle = {
 };
 
 export default Dashboard;
+
