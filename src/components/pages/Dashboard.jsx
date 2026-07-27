@@ -5,9 +5,9 @@ import { signOut, signInWithEmailAndPassword } from 'firebase/auth';
 import { useNavigate } from 'react-router-dom';
 import Navbar from '../common/Navbar';
 import Footer from '../common/Footer';
-import { FiPlus, FiLogOut, FiSearch, FiCopy, FiCheck, FiTrash2, FiCode, FiArrowLeft, FiTerminal, FiTrendingUp, FiCpu, FiLayers, FiShield, FiEye, FiEyeOff, FiLoader } from 'react-icons/fi';
+import BlogManager from '../common/BlogManager'
+import { FiPlus, FiLogOut, FiSearch, FiCopy, FiCheck, FiTrash2, FiCode, FiArrowLeft, FiTerminal, FiTrendingUp, FiCpu, FiLayers, FiShield, FiEye, FiEyeOff, FiLoader, FiBookOpen } from 'react-icons/fi';
 import { motion, AnimatePresence } from 'framer-motion';
-import BlogManager from '../common/BlogManager';
 
 const Dashboard = () => {
   const [logs, setLogs] = useState([]);
@@ -205,7 +205,23 @@ const Dashboard = () => {
             <p style={{ opacity: 0.7, margin: '5px 0 0 0', fontSize: '0.9rem' }}>My private repository for code snippets, preprocessing rules, and machine learning guidelines.</p>
           </div>
           
-          <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+          <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+            <button onClick={() => navigate('/BlogManager')} style={{
+              background: 'transparent',
+              border: '1px solid var(--accent-color)',
+              color: 'var(--accent-color)',
+              padding: '10px 16px',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              fontWeight: '600',
+              fontSize: '0.9rem'
+            }}>
+              <FiBookOpen /> Manage Blog
+            </button>
+
             <button onClick={() => setIsModalOpen(true)} style={{
               background: 'var(--accent-color)',
               color: '#050b14',
@@ -221,6 +237,7 @@ const Dashboard = () => {
             }}>
               <FiPlus /> Add New Entry
             </button>
+
             <button onClick={promptLogout} style={{
               background: 'rgba(239, 68, 68, 0.1)',
               color: '#ef4444',
@@ -588,7 +605,6 @@ const Dashboard = () => {
             </div>
           )}
         </AnimatePresence>
-      <BlogManager />
 
       </div>
       <Footer />
@@ -617,4 +633,3 @@ const labelStyle = {
 };
 
 export default Dashboard;
-
