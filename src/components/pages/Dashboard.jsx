@@ -1,23 +1,34 @@
 import React, { useState, useEffect } from 'react';
 import { db, auth } from '../../firebase';
 import { collection, addDoc, getDocs, query, orderBy, deleteDoc, doc } from 'firebase/firestore';
-import { signOut } from 'firebase/auth';
+import { signOut, signInWithEmailAndPassword } from 'firebase/auth';
 import { useNavigate } from 'react-router-dom';
 import Navbar from '../common/Navbar';
 import Footer from '../common/Footer';
-import { FiPlus, FiLogOut, FiSearch, FiCopy, FiCheck, FiTrash2, FiCode, FiArrowLeft, FiTerminal, FiTrendingUp, FiCpu, FiLayers } from 'react-icons/fi';
+import { FiPlus, FiLogOut, FiSearch, FiCopy, FiCheck, FiTrash2, FiCode, FiArrowLeft, FiTerminal, FiTrendingUp, FiCpu, FiLayers, FiShield, FiEye, FiEyeOff, FiLoader } from 'react-icons/fi';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const Dashboard = () => {
   const [logs, setLogs] = useState([]);
-  const [title, setTitle] = useState('');
-  const [category, setCategory] = useState('Preprocessing');
-  const [content, setContent] = useState('');
-  const [codeSnippet, setCodeSnippet] = useState('');
-  const [dayNumber, setDayNumber] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
-  const [activeCategory, setActiveCategory] = useState(null); // null means showing card grid
+  const [activeCategory, setActiveCategory] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  
+  // Clean 4-Part Form State
+  const [dayNumber, setDayNumber] = useState('');
+  const [category, setCategory] = useState('Preprocessing');
+  const [topic, setTopic] = useState('');
+  const [learnedContent, setLearnedContent] = useState('');
+  const [takeaways, setTakeaways] = useState('');
+  const [codeSnippet, setCodeSnippet] = useState('');
+
+  // Confirmation & Security State with Loading & Eye Toggle
+  const [confirmConfig, setConfirmConfig] = useState({ isOpen: false, title: '', message: '', type: '', dataId: null });
+  const [deletePassword, setDeletePassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState('');
+
   const [copiedId, setCopiedId] = useState(null);
   const [toastMessage, setToastMessage] = useState('');
   const navigate = useNavigate();
@@ -30,7 +41,6 @@ const Dashboard = () => {
     { name: 'Full-Stack AI', icon: FiCode, desc: 'Firebase, React integration, and API connection logic.' }
   ];
 
-  // Fetch logs from Firestore
   const fetchLogs = async () => {
     try {
       const q = query(collection(db, 'daily_logs'), orderBy('dayNumber', 'desc'));
@@ -51,42 +61,86 @@ const Dashboard = () => {
     setTimeout(() => setToastMessage(''), 3000);
   };
 
-  // Handle adding a new log/snippet
   const handleAddLog = async (e) => {
     e.preventDefault();
     try {
       await addDoc(collection(db, 'daily_logs'), {
-        title,
-        category,
-        content,
-        codeSnippet,
         dayNumber: Number(dayNumber),
+        category,
+        title: topic,
+        learnedContent,
+        takeaways,
+        codeSnippet,
         createdAt: new Date()
       });
-      setTitle('');
-      setContent('');
-      setCodeSnippet('');
+
+      // Reset Form
       setDayNumber('');
+      setTopic('');
+      setLearnedContent('');
+      setTakeaways('');
+      setCodeSnippet('');
+      
       setIsModalOpen(false);
       fetchLogs();
-      showToast('Successfully added to your knowledge base!');
+      showToast('Successfully saved to your knowledge base!');
     } catch (error) {
       console.error('Error adding log:', error);
     }
   };
 
-  // Delete a log entry with custom toast instead of window.confirm
-  const handleDelete = async (id) => {
-    try {
-      await deleteDoc(doc(db, 'daily_logs', id));
-      fetchLogs();
-      showToast('Entry deleted successfully.');
-    } catch (error) {
-      console.error('Error deleting log:', error);
+  const promptDelete = (id) => {
+    setDeletePassword('');
+    setShowPassword(false);
+    setDeleteError('');
+    setIsDeleting(false);
+    setConfirmConfig({
+      isOpen: true,
+      title: 'Security Verification',
+      message: 'Enter your admin password to confirm deletion of this lesson.',
+      type: 'delete',
+      dataId: id
+    });
+  };
+
+  const promptLogout = () => {
+    setConfirmConfig({
+      isOpen: true,
+      title: 'Sign Out?',
+      message: 'Are you sure you want to log out of your command center?',
+      type: 'logout',
+      dataId: null
+    });
+  };
+
+  const handleConfirmedAction = async () => {
+    if (confirmConfig.type === 'logout') {
+      await signOut(auth);
+      navigate('/login');
+    } else if (confirmConfig.type === 'delete') {
+      setIsDeleting(true);
+      setDeleteError('');
+      try {
+        const user = auth.currentUser;
+        if (!user || !user.email) {
+          setDeleteError('Authentication session not found.');
+          setIsDeleting(false);
+          return;
+        }
+        await signInWithEmailAndPassword(auth, user.email, deletePassword);
+        await deleteDoc(doc(db, 'daily_logs', confirmConfig.dataId));
+        fetchLogs();
+        showToast('Entry deleted successfully.');
+        setConfirmConfig({ isOpen: false, title: '', message: '', type: '', dataId: null });
+      } catch (error) {
+        console.error('Password verification failed:', error);
+        setDeleteError('Incorrect password. Deletion cancelled.');
+      } finally {
+        setIsDeleting(false);
+      }
     }
   };
 
-  // Copy code snippet to clipboard
   const handleCopyCode = (code, id) => {
     navigator.clipboard.writeText(code);
     setCopiedId(id);
@@ -94,26 +148,27 @@ const Dashboard = () => {
     setTimeout(() => setCopiedId(null), 2000);
   };
 
-  const handleLogout = async () => {
-    await signOut(auth);
-    navigate('/login');
-  };
-
-  // Filter logs for the active category view
-  const filteredLogs = logs.filter(log => {
-    const matchesCategory = !activeCategory || log.category === activeCategory;
+  const filteredLogs = Array.isArray(logs) ? logs.filter(log => {
+    if (!log) return false;
+    const logCat = (log.category || '').trim().toLowerCase();
+    const activeCat = (activeCategory || '').trim().toLowerCase();
+    
+    const matchesCategory = !activeCategory || logCat === activeCat;
+    const queryText = (searchTerm || '').toLowerCase();
+    
     const matchesSearch = 
-      log.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      log.content.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (log.codeSnippet && log.codeSnippet.toLowerCase().includes(searchTerm.toLowerCase()));
+      !searchTerm || 
+      (log.title && log.title.toLowerCase().includes(queryText)) ||
+      (log.learnedContent && log.learnedContent.toLowerCase().includes(queryText)) ||
+      (log.takeaways && log.takeaways.toLowerCase().includes(queryText));
+      
     return matchesCategory && matchesSearch;
-  });
+  }) : [];
 
   return (
     <>
       <Navbar />
       
-      {/* Custom Toast Banner */}
       <AnimatePresence>
         {toastMessage && (
           <motion.div 
@@ -131,7 +186,7 @@ const Dashboard = () => {
               borderRadius: '8px',
               fontWeight: '600',
               fontSize: '0.9rem',
-              zIndex: 1000,
+              zIndex: 1100,
               boxShadow: '0 4px 12px rgba(0,0,0,0.3)'
             }}
           >
@@ -140,16 +195,16 @@ const Dashboard = () => {
         )}
       </AnimatePresence>
 
-      <div style={{ padding: '100px 1.5rem 4rem 1.5rem', maxWidth: '1100px', margin: '0 auto' }}>
+      <div style={{ padding: '100px 1.25rem 4rem 1.25rem', maxWidth: '1100px', margin: '0 auto' }}>
         
         {/* Header Section */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem', flexWrap: 'wrap', gap: '1rem' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '2rem', flexWrap: 'wrap', gap: '1rem' }}>
           <div>
-            <h1 style={{ fontSize: 'clamp(1.75rem, 3vw, 2.2rem)', fontWeight: '700', margin: 0 }}>Command Center</h1>
-            <p style={{ opacity: 0.7, margin: '5px 0 0 0', fontSize: '0.95rem' }}>Your private repository for code snippets, preprocessing rules, and machine learning guidelines.</p>
+            <h1 style={{ fontSize: 'clamp(1.6rem, 3vw, 2.2rem)', fontWeight: '700', margin: 0 }}>Command Center</h1>
+            <p style={{ opacity: 0.7, margin: '5px 0 0 0', fontSize: '0.9rem' }}>Your private repository for code snippets, preprocessing rules, and machine learning guidelines.</p>
           </div>
           
-          <div style={{ display: 'flex', gap: '10px' }}>
+          <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
             <button onClick={() => setIsModalOpen(true)} style={{
               background: 'var(--accent-color)',
               color: '#050b14',
@@ -165,7 +220,7 @@ const Dashboard = () => {
             }}>
               <FiPlus /> Add New Entry
             </button>
-            <button onClick={handleLogout} style={{
+            <button onClick={promptLogout} style={{
               background: 'rgba(239, 68, 68, 0.1)',
               color: '#ef4444',
               border: '1px solid rgba(239, 68, 68, 0.3)',
@@ -183,40 +238,39 @@ const Dashboard = () => {
           </div>
         </div>
 
-        {/* View Mode: Category Grid Cards (Landing Page style) or Specific Category View */}
+        {/* Category Grid or Category Detail View */}
         {!activeCategory ? (
           <div>
-            <h2 style={{ fontSize: '1.3rem', fontWeight: '600', marginBottom: '1.25rem', opacity: 0.9 }}>Knowledge Base Segments</h2>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem' }}>
+            <h2 style={{ fontSize: '1.2rem', fontWeight: '600', marginBottom: '1.25rem', opacity: 0.9 }}>Knowledge Base Segments</h2>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.25rem' }}>
               {categoryCards.map((card) => {
                 const IconComponent = card.icon;
-                const count = logs.filter(l => l.category === card.name).length;
+                const count = logs.filter(l => (l.category || '').trim().toLowerCase() === card.name.toLowerCase()).length;
                 return (
                   <motion.div
                     key={card.name}
-                    whileHover={{ y: -5 }}
+                    whileHover={{ y: -4 }}
                     onClick={() => setActiveCategory(card.name)}
                     style={{
                       background: 'var(--card-bg)',
-                      padding: '1.8rem',
+                      padding: '1.5rem',
                       borderRadius: '12px',
                       border: '1px solid rgba(100, 255, 218, 0.15)',
                       cursor: 'pointer',
                       display: 'flex',
                       flexDirection: 'column',
                       gap: '0.75rem',
-                      boxShadow: '0 8px 20px rgba(0,0,0,0.2)',
-                      position: 'relative'
+                      boxShadow: '0 8px 20px rgba(0,0,0,0.2)'
                     }}
                   >
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <IconComponent size={28} color="var(--accent-color)" />
+                      <IconComponent size={26} color="var(--accent-color)" />
                       <span style={{ background: 'rgba(100, 255, 218, 0.1)', color: 'var(--accent-color)', padding: '3px 10px', borderRadius: '12px', fontSize: '0.75rem', fontWeight: '600' }}>
-                        {count} Saved Items
+                        {count} Items
                       </span>
                     </div>
-                    <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: '600' }}>{card.name}</h3>
-                    <p style={{ opacity: 0.75, fontSize: '0.9rem', margin: 0, lineHeight: '1.5' }}>
+                    <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: '600' }}>{card.name}</h3>
+                    <p style={{ opacity: 0.75, fontSize: '0.88rem', margin: 0, lineHeight: '1.4' }}>
                       {card.desc}
                     </p>
                   </motion.div>
@@ -226,7 +280,6 @@ const Dashboard = () => {
           </div>
         ) : (
           <div>
-            {/* Back button and Search Bar for active category */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
               <button 
                 onClick={() => { setActiveCategory(null); setSearchTerm(''); }}
@@ -240,7 +293,7 @@ const Dashboard = () => {
                   display: 'flex',
                   alignItems: 'center',
                   gap: '6px',
-                  fontSize: '0.9rem',
+                  fontSize: '0.85rem',
                   fontWeight: '600'
                 }}
               >
@@ -259,20 +312,20 @@ const Dashboard = () => {
               </div>
             </div>
 
-            <h2 style={{ fontSize: '1.5rem', fontWeight: '700', marginBottom: '1.5rem', color: 'var(--accent-color)' }}>
+            <h2 style={{ fontSize: '1.4rem', fontWeight: '700', marginBottom: '1.5rem', color: 'var(--accent-color)' }}>
               {activeCategory} Guidelines & Snippets
             </h2>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '1.5rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.25rem' }}>
               {filteredLogs.length === 0 ? (
-                <div style={{ gridColumn: 'span 2', textAlign: 'center', padding: '4rem', opacity: 0.6, background: 'var(--card-bg)', borderRadius: '12px' }}>
+                <div style={{ gridColumn: 'span 2', textAlign: 'center', padding: '3rem', opacity: 0.6, background: 'var(--card-bg)', borderRadius: '12px', fontSize: '0.9rem' }}>
                   No guidelines or snippets saved under {activeCategory} yet. Click "Add New Entry" to create one!
                 </div>
               ) : (
                 filteredLogs.map(log => (
                   <div key={log.id} style={{
                     background: 'var(--card-bg)',
-                    padding: '1.5rem',
+                    padding: '1.25rem',
                     borderRadius: '12px',
                     border: '1px solid rgba(100, 255, 218, 0.15)',
                     display: 'flex',
@@ -286,32 +339,47 @@ const Dashboard = () => {
                           Day {log.dayNumber}
                         </span>
                         <button 
-                          onClick={() => handleDelete(log.id)}
+                          onClick={() => promptDelete(log.id)}
                           title="Delete Entry"
-                          style={{ background: 'transparent', border: 'none', color: '#ef4444', cursor: 'pointer', opacity: 0.8 }}
+                          style={{ background: 'transparent', border: 'none', color: '#ef4444', cursor: 'pointer', opacity: 0.8, padding: '4px' }}
                         >
                           <FiTrash2 size={16} />
                         </button>
                       </div>
 
                       <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1.15rem' }}>{log.title}</h3>
-                      <p style={{ opacity: 0.8, fontSize: '0.9rem', margin: '0 0 1rem 0', lineHeight: '1.5', whiteSpace: 'pre-wrap' }}>
-                        {log.content}
-                      </p>
+                      
+                      {log.learnedContent && (
+                        <div style={{ marginBottom: '0.75rem' }}>
+                          <span style={{ fontSize: '0.75rem', color: 'var(--accent-color)', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px' }}>What I Learned:</span>
+                          <p style={{ opacity: 0.85, fontSize: '0.88rem', margin: '2px 0 0 0', lineHeight: '1.5', whiteSpace: 'pre-wrap' }}>
+                            {log.learnedContent}
+                          </p>
+                        </div>
+                      )}
+
+                      {log.takeaways && (
+                        <div style={{ marginBottom: '1rem', background: 'rgba(100, 255, 218, 0.03)', padding: '10px', borderRadius: '8px', borderLeft: '3px solid var(--accent-color)' }}>
+                          <span style={{ fontSize: '0.75rem', color: 'var(--accent-color)', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Rules / Takeaways:</span>
+                          <p style={{ opacity: 0.9, fontSize: '0.88rem', margin: '2px 0 0 0', lineHeight: '1.5', whiteSpace: 'pre-wrap' }}>
+                            {log.takeaways}
+                          </p>
+                        </div>
+                      )}
                     </div>
 
                     {log.codeSnippet && (
                       <div style={{ position: 'relative', marginTop: 'auto' }}>
                         <div style={{
                           background: '#020617',
-                          padding: '12px',
+                          padding: '10px',
                           borderRadius: '8px',
                           border: '1px solid rgba(100, 255, 218, 0.2)',
                           fontFamily: 'monospace',
-                          fontSize: '0.85rem',
+                          fontSize: '0.8rem',
                           overflowX: 'auto',
                           color: '#64ffda',
-                          maxHeight: '180px'
+                          maxHeight: '160px'
                         }}>
                           <pre style={{ margin: 0 }}>{log.codeSnippet}</pre>
                         </div>
@@ -319,14 +387,14 @@ const Dashboard = () => {
                           onClick={() => handleCopyCode(log.codeSnippet, log.id)}
                           style={{
                             position: 'absolute',
-                            top: '8px',
-                            right: '8px',
+                            top: '6px',
+                            right: '6px',
                             background: 'rgba(100, 255, 218, 0.1)',
                             border: '1px solid rgba(100, 255, 218, 0.3)',
                             color: 'var(--accent-color)',
-                            padding: '4px 8px',
+                            padding: '3px 8px',
                             borderRadius: '6px',
-                            fontSize: '0.75rem',
+                            fontSize: '0.7rem',
                             cursor: 'pointer',
                             display: 'flex',
                             alignItems: 'center',
@@ -344,7 +412,7 @@ const Dashboard = () => {
           </div>
         )}
 
-        {/* Modal Form Popup for Adding Entries */}
+        {/* 4-Part Clean Modal Form */}
         <AnimatePresence>
           {isModalOpen && (
             <div style={{
@@ -367,7 +435,7 @@ const Dashboard = () => {
                 exit={{ opacity: 0, scale: 0.95 }}
                 style={{
                   background: 'var(--card-bg)',
-                  padding: '2rem',
+                  padding: '1.75rem',
                   borderRadius: '16px',
                   border: '1px solid rgba(100, 255, 218, 0.2)',
                   width: '100%',
@@ -378,8 +446,8 @@ const Dashboard = () => {
                 }}
               >
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
-                  <h3 style={{ margin: 0, fontSize: '1.3rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <FiPlus color="var(--accent-color)" /> Save New Guideline or Snippet
+                  <h3 style={{ margin: 0, fontSize: '1.2rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <FiPlus color="var(--accent-color)" /> Log New ML Lesson
                   </h3>
                   <button 
                     onClick={() => setIsModalOpen(false)}
@@ -390,25 +458,16 @@ const Dashboard = () => {
                 </div>
 
                 <form onSubmit={handleAddLog} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                  
+                  {/* Part 1: Lesson Overview */}
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.9rem' }}>
                     <div>
-                      <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '6px' }}>Day Number</label>
-                      <input 
-                        type="number" 
-                        placeholder="e.g. 62" 
-                        value={dayNumber} 
-                        onChange={(e) => setDayNumber(e.target.value)} 
-                        required 
-                        style={inputStyle}
-                      />
+                      <label style={labelStyle}>Day Number</label>
+                      <input type="number" placeholder="e.g. 68" value={dayNumber} onChange={(e) => setDayNumber(e.target.value)} required style={inputStyle} />
                     </div>
                     <div>
-                      <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '6px' }}>Segment / Category</label>
-                      <select 
-                        value={category} 
-                        onChange={(e) => setCategory(e.target.value)} 
-                        style={inputStyle}
-                      >
+                      <label style={labelStyle}>Category</label>
+                      <select value={category} onChange={(e) => setCategory(e.target.value)} style={inputStyle}>
                         <option value="Preprocessing">Preprocessing</option>
                         <option value="EDA & Statistics">EDA & Statistics</option>
                         <option value="Model Training">Model Training</option>
@@ -419,66 +478,38 @@ const Dashboard = () => {
                   </div>
 
                   <div>
-                    <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '6px' }}>Topic Title</label>
-                    <input 
-                      type="text" 
-                      placeholder="e.g. Standard Scaler & missing value handling" 
-                      value={title} 
-                      onChange={(e) => setTitle(e.target.value)} 
-                      required 
-                      style={inputStyle}
-                    />
+                    <label style={labelStyle}>Topic Title</label>
+                    <input type="text" placeholder="e.g. Polynomial Regression" value={topic} onChange={(e) => setTopic(e.target.value)} required style={inputStyle} />
                   </div>
 
+                  {/* Part 2: What I Learned */}
                   <div>
-                    <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '6px' }}>Key Guidelines & Notes</label>
-                    <textarea 
-                      rows="3" 
-                      placeholder="Write down rules, observations, or decision criteria..." 
-                      value={content} 
-                      onChange={(e) => setContent(e.target.value)} 
-                      required 
-                      style={{ ...inputStyle, resize: 'vertical' }}
-                    />
+                    <label style={labelStyle}>1. What I Learned (What is it & Why is it used?)</label>
+                    <textarea rows="3" placeholder="Explain in your own words..." value={learnedContent} onChange={(e) => setLearnedContent(e.target.value)} style={{ ...inputStyle, resize: 'vertical' }} />
                   </div>
 
+                  {/* Part 3: Rules / Key Takeaways */}
                   <div>
-                    <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <FiCode color="var(--accent-color)" /> Reusable Code Snippet (Optional)
-                    </label>
-                    <textarea 
-                      rows="4" 
-                      placeholder="Paste python/js snippet here..." 
-                      value={codeSnippet} 
-                      onChange={(e) => setCodeSnippet(e.target.value)} 
-                      style={{ ...inputStyle, fontFamily: 'monospace', background: '#020617', resize: 'vertical' }}
-                    />
+                    <label style={labelStyle}>2. Rules / Key Takeaways (Crucial for later)</label>
+                    <textarea rows="3" placeholder="Bullet points or practical rules..." value={takeaways} onChange={(e) => setTakeaways(e.target.value)} style={{ ...inputStyle, resize: 'vertical' }} />
                   </div>
 
-                  <div style={{ display: 'flex', gap: '1rem', marginTop: '0.5rem' }}>
+                  {/* Part 4: Code Snippet */}
+                  <div>
+                    <label style={labelStyle}>3. Code Snippet (Optional)</label>
+                    <textarea rows="3" placeholder="Paste python/js snippet..." value={codeSnippet} onChange={(e) => setCodeSnippet(e.target.value)} style={{ ...inputStyle, fontFamily: 'monospace', background: '#020617', resize: 'vertical' }} />
+                  </div>
+
+                  <div style={{ display: 'flex', gap: '0.9rem', marginTop: '0.5rem' }}>
                     <button type="button" onClick={() => setIsModalOpen(false)} style={{
-                      flex: 1,
-                      background: 'transparent',
-                      color: 'var(--text-color)',
-                      border: '1px solid rgba(100, 255, 218, 0.3)',
-                      padding: '12px',
-                      borderRadius: '8px',
-                      fontWeight: '600',
-                      cursor: 'pointer'
+                      flex: 1, background: 'transparent', color: 'var(--text-color)', border: '1px solid rgba(100, 255, 218, 0.3)', padding: '10px', borderRadius: '8px', fontWeight: '600', cursor: 'pointer', fontSize: '0.9rem'
                     }}>
                       Cancel
                     </button>
                     <button type="submit" style={{
-                      flex: 1,
-                      background: 'var(--accent-color)',
-                      color: '#050b14',
-                      padding: '12px',
-                      borderRadius: '8px',
-                      fontWeight: '600',
-                      border: 'none',
-                      cursor: 'pointer'
+                      flex: 1, background: 'var(--accent-color)', color: '#050b14', padding: '10px', borderRadius: '8px', fontWeight: '600', border: 'none', cursor: 'pointer', fontSize: '0.9rem'
                     }}>
-                      Save Entry
+                      Save Lesson
                     </button>
                   </div>
                 </form>
@@ -487,6 +518,109 @@ const Dashboard = () => {
           )}
         </AnimatePresence>
 
+       {/* Fast & Clean Responsive Modal Form Popup */}
+<AnimatePresence>
+  {isModalOpen && (
+    <div style={{
+      position: 'fixed',
+      top: 0,
+      left: 0,
+      width: '100vw',
+      height: '100vh',
+      background: 'rgba(5, 11, 20, 0.85)',
+      backdropFilter: 'blur(5px)',
+      display: 'flex',
+      justifyContent: 'center',
+      alignItems: 'center',
+      zIndex: 1000,
+      padding: '1rem 0.75rem', // Safe horizontal margins for mobile screens
+      boxSizing: 'border-box'
+    }}>
+      <motion.div 
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        exit={{ opacity: 0, scale: 0.95 }}
+        style={{
+          background: 'var(--card-bg)',
+          padding: '1.5rem 1.25rem',
+          borderRadius: '16px',
+          border: '1px solid rgba(100, 255, 218, 0.2)',
+          width: '100%',
+          maxWidth: '480px', // Perfect width so it never touches the screen edges
+          maxHeight: '90vh',
+          overflowY: 'auto',
+          boxShadow: '0 20px 40px rgba(0,0,0,0.4)',
+          boxSizing: 'border-box'
+        }}
+      >
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+          <h3 style={{ margin: 0, fontSize: '1.1rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <FiPlus color="var(--accent-color)" /> Log New ML Lesson
+          </h3>
+          <button 
+            onClick={() => setIsModalOpen(false)}
+            style={{ background: 'transparent', border: 'none', color: 'var(--text-color)', fontSize: '1.2rem', cursor: 'pointer', opacity: 0.7 }}
+          >
+            ✕
+          </button>
+        </div>
+
+        <form onSubmit={handleAddLog} style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+          
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '0.85rem' }}>
+            <div>
+              <label style={labelStyle}>Day Number</label>
+              <input type="number" placeholder="e.g. 68" value={dayNumber} onChange={(e) => setDayNumber(e.target.value)} required style={inputStyle} />
+            </div>
+            <div>
+              <label style={labelStyle}>Category</label>
+              <select value={category} onChange={(e) => setCategory(e.target.value)} style={inputStyle}>
+                <option value="Preprocessing">Preprocessing</option>
+                <option value="EDA & Statistics">EDA & Statistics</option>
+                <option value="Model Training">Model Training</option>
+                <option value="Model Evaluation">Model Evaluation</option>
+                <option value="Full-Stack AI">Full-Stack AI</option>
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label style={labelStyle}>Topic Title</label>
+            <input type="text" placeholder="e.g. Polynomial Regression" value={topic} onChange={(e) => setTopic(e.target.value)} required style={inputStyle} />
+          </div>
+
+          <div>
+            <label style={labelStyle}>1. What I Learned (What is it & Why is it used?)</label>
+            <textarea rows="3" placeholder="Explain in your own words..." value={learnedContent} onChange={(e) => setLearnedContent(e.target.value)} style={{ ...inputStyle, resize: 'vertical' }} />
+          </div>
+
+          <div>
+            <label style={labelStyle}>2. Rules / Key Takeaways (Crucial for later)</label>
+            <textarea rows="3" placeholder="Bullet points or practical rules..." value={takeaways} onChange={(e) => setTakeaways(e.target.value)} style={{ ...inputStyle, resize: 'vertical' }} />
+          </div>
+
+          <div>
+            <label style={labelStyle}>3. Code Snippet (Optional)</label>
+            <textarea rows="3" placeholder="Paste python/js snippet..." value={codeSnippet} onChange={(e) => setCodeSnippet(e.target.value)} style={{ ...inputStyle, fontFamily: 'monospace', background: '#020617', resize: 'vertical' }} />
+          </div>
+
+          <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.5rem' }}>
+            <button type="button" onClick={() => setIsModalOpen(false)} style={{
+              flex: 1, background: 'transparent', color: 'var(--text-color)', border: '1px solid rgba(100, 255, 218, 0.3)', padding: '10px', borderRadius: '8px', fontWeight: '600', cursor: 'pointer', fontSize: '0.9rem'
+            }}>
+              Cancel
+            </button>
+            <button type="submit" style={{
+              flex: 1, background: 'var(--accent-color)', color: '#050b14', padding: '10px', borderRadius: '8px', fontWeight: '600', border: 'none', cursor: 'pointer', fontSize: '0.9rem'
+            }}>
+              Save Lesson
+            </button>
+          </div>
+        </form>
+      </motion.div>
+    </div>
+  )}
+</AnimatePresence>
       </div>
       <Footer />
     </>
@@ -500,8 +634,15 @@ const inputStyle = {
   border: '1px solid rgba(100, 255, 218, 0.2)',
   borderRadius: '8px',
   color: 'var(--text-color)',
-  fontSize: '0.95rem',
+  fontSize: '0.9rem',
   outline: 'none'
+};
+
+const labelStyle = {
+  display: 'block',
+  fontSize: '0.8rem',
+  marginBottom: '4px',
+  opacity: 0.8
 };
 
 export default Dashboard;
