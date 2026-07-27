@@ -201,7 +201,7 @@ const Dashboard = () => {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '2rem', flexWrap: 'wrap', gap: '1rem' }}>
           <div>
             <h1 style={{ fontSize: 'clamp(1.6rem, 3vw, 2.2rem)', fontWeight: '700', margin: 0 }}>Command Center</h1>
-            <p style={{ opacity: 0.7, margin: '5px 0 0 0', fontSize: '0.9rem' }}>Your private repository for code snippets, preprocessing rules, and machine learning guidelines.</p>
+            <p style={{ opacity: 0.7, margin: '5px 0 0 0', fontSize: '0.9rem' }}>My private repository for code snippets, preprocessing rules, and machine learning guidelines.</p>
           </div>
           
           <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
@@ -412,7 +412,7 @@ const Dashboard = () => {
           </div>
         )}
 
-        {/* 4-Part Clean Modal Form */}
+        {/* Perfectly Centered & Sized Modal Form */}
         <AnimatePresence>
           {isModalOpen && (
             <div style={{
@@ -427,26 +427,28 @@ const Dashboard = () => {
               justifyContent: 'center',
               alignItems: 'center',
               zIndex: 1000,
-              padding: '1rem'
+              padding: '1rem',
+              boxSizing: 'border-box'
             }}>
               <motion.div 
-                initial={{ opacity: 0, scale: 0.95 }}
+                initial={{ opacity: 0, scale: 0.98 }}
                 animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.95 }}
+                exit={{ opacity: 0, scale: 0.98 }}
                 style={{
                   background: 'var(--card-bg)',
-                  padding: '1.75rem',
+                  padding: '1.5rem 1.25rem',
                   borderRadius: '16px',
                   border: '1px solid rgba(100, 255, 218, 0.2)',
                   width: '100%',
-                  maxWidth: '550px',
+                  maxWidth: '440px',
                   maxHeight: '90vh',
                   overflowY: 'auto',
-                  boxShadow: '0 20px 40px rgba(0,0,0,0.4)'
+                  boxShadow: '0 20px 40px rgba(0,0,0,0.4)',
+                  boxSizing: 'border-box'
                 }}
               >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
-                  <h3 style={{ margin: 0, fontSize: '1.2rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                  <h3 style={{ margin: 0, fontSize: '1.1rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <FiPlus color="var(--accent-color)" /> Log New ML Lesson
                   </h3>
                   <button 
@@ -457,15 +459,14 @@ const Dashboard = () => {
                   </button>
                 </div>
 
-                <form onSubmit={handleAddLog} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                <form onSubmit={handleAddLog} style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem', width: '100%', boxSizing: 'border-box' }}>
                   
-                  {/* Part 1: Lesson Overview */}
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.9rem' }}>
-                    <div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', width: '100%', boxSizing: 'border-box' }}>
+                    <div style={{ width: '100%', boxSizing: 'border-box' }}>
                       <label style={labelStyle}>Day Number</label>
                       <input type="number" placeholder="e.g. 68" value={dayNumber} onChange={(e) => setDayNumber(e.target.value)} required style={inputStyle} />
                     </div>
-                    <div>
+                    <div style={{ width: '100%', boxSizing: 'border-box' }}>
                       <label style={labelStyle}>Category</label>
                       <select value={category} onChange={(e) => setCategory(e.target.value)} style={inputStyle}>
                         <option value="Preprocessing">Preprocessing</option>
@@ -477,30 +478,27 @@ const Dashboard = () => {
                     </div>
                   </div>
 
-                  <div>
+                  <div style={{ width: '100%', boxSizing: 'border-box' }}>
                     <label style={labelStyle}>Topic Title</label>
                     <input type="text" placeholder="e.g. Polynomial Regression" value={topic} onChange={(e) => setTopic(e.target.value)} required style={inputStyle} />
                   </div>
 
-                  {/* Part 2: What I Learned */}
-                  <div>
+                  <div style={{ width: '100%', boxSizing: 'border-box' }}>
                     <label style={labelStyle}>1. What I Learned (What is it & Why is it used?)</label>
                     <textarea rows="3" placeholder="Explain in your own words..." value={learnedContent} onChange={(e) => setLearnedContent(e.target.value)} style={{ ...inputStyle, resize: 'vertical' }} />
                   </div>
 
-                  {/* Part 3: Rules / Key Takeaways */}
-                  <div>
+                  <div style={{ width: '100%', boxSizing: 'border-box' }}>
                     <label style={labelStyle}>2. Rules / Key Takeaways (Crucial for later)</label>
                     <textarea rows="3" placeholder="Bullet points or practical rules..." value={takeaways} onChange={(e) => setTakeaways(e.target.value)} style={{ ...inputStyle, resize: 'vertical' }} />
                   </div>
 
-                  {/* Part 4: Code Snippet */}
-                  <div>
+                  <div style={{ width: '100%', boxSizing: 'border-box' }}>
                     <label style={labelStyle}>3. Code Snippet (Optional)</label>
                     <textarea rows="3" placeholder="Paste python/js snippet..." value={codeSnippet} onChange={(e) => setCodeSnippet(e.target.value)} style={{ ...inputStyle, fontFamily: 'monospace', background: '#020617', resize: 'vertical' }} />
                   </div>
 
-                  <div style={{ display: 'flex', gap: '0.9rem', marginTop: '0.5rem' }}>
+                  <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.5rem', width: '100%', boxSizing: 'border-box' }}>
                     <button type="button" onClick={() => setIsModalOpen(false)} style={{
                       flex: 1, background: 'transparent', color: 'var(--text-color)', border: '1px solid rgba(100, 255, 218, 0.3)', padding: '10px', borderRadius: '8px', fontWeight: '600', cursor: 'pointer', fontSize: '0.9rem'
                     }}>
@@ -518,113 +516,78 @@ const Dashboard = () => {
           )}
         </AnimatePresence>
 
-       {/* Fast & Clean Responsive Modal Form Popup */}
-<AnimatePresence>
-  {isModalOpen && (
-    <div style={{
-      position: 'fixed',
-      top: 0,
-      left: 0,
-      width: '100vw',
-      height: '100vh',
-      background: 'rgba(5, 11, 20, 0.85)',
-      backdropFilter: 'blur(5px)',
-      display: 'flex',
-      justifyContent: 'center',
-      alignItems: 'center',
-      zIndex: 1000,
-      padding: '1rem',
-      boxSizing: 'border-box',
-      overflowY: 'auto'
-    }}>
-      <motion.div 
-        initial={{ opacity: 0, scale: 0.98 }}
-        animate={{ opacity: 1, scale: 1 }}
-        exit={{ opacity: 0, scale: 0.98 }}
-        transition={{ duration: 0.2 }}
-        style={{
-          background: 'var(--card-bg)',
-          padding: '1.5rem 1.25rem',
-          borderRadius: '16px',
-          border: '1px solid rgba(100, 255, 218, 0.2)',
-          width: '100%',
-          maxWidth: '460px',
-          maxHeight: '88vh',
-          overflowY: 'auto',
-          boxShadow: '0 20px 40px rgba(0,0,0,0.4)',
-          boxSizing: 'border-box',
-          margin: 'auto'
-        }}
-      >
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-          <h3 style={{ margin: 0, fontSize: '1.1rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <FiPlus color="var(--accent-color)" /> Log New ML Lesson
-          </h3>
-          <button 
-            type="button"
-            onClick={() => setIsModalOpen(false)}
-            style={{ background: 'transparent', border: 'none', color: 'var(--text-color)', fontSize: '1.2rem', cursor: 'pointer', opacity: 0.7 }}
-          >
-            ✕
-          </button>
-        </div>
-
-        <form onSubmit={handleAddLog} style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
-          
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
-            <div>
-              <label style={labelStyle}>Day Number</label>
-              <input type="number" placeholder="e.g. 68" value={dayNumber} onChange={(e) => setDayNumber(e.target.value)} required style={inputStyle} />
-            </div>
-            <div>
-              <label style={labelStyle}>Category</label>
-              <select value={category} onChange={(e) => setCategory(e.target.value)} style={inputStyle}>
-                <option value="Preprocessing">Preprocessing</option>
-                <option value="EDA & Statistics">EDA & Statistics</option>
-                <option value="Model Training">Model Training</option>
-                <option value="Model Evaluation">Model Evaluation</option>
-                <option value="Full-Stack AI">Full-Stack AI</option>
-              </select>
-            </div>
-          </div>
-
-          <div>
-            <label style={labelStyle}>Topic Title</label>
-            <input type="text" placeholder="e.g. Polynomial Regression" value={topic} onChange={(e) => setTopic(e.target.value)} required style={inputStyle} />
-          </div>
-
-          <div>
-            <label style={labelStyle}>1. What I Learned (What is it & Why is it used?)</label>
-            <textarea rows="3" placeholder="Explain in your own words..." value={learnedContent} onChange={(e) => setLearnedContent(e.target.value)} style={{ ...inputStyle, resize: 'vertical' }} />
-          </div>
-
-          <div>
-            <label style={labelStyle}>2. Rules / Key Takeaways (Crucial for later)</label>
-            <textarea rows="3" placeholder="Bullet points or practical rules..." value={takeaways} onChange={(e) => setTakeaways(e.target.value)} style={{ ...inputStyle, resize: 'vertical' }} />
-          </div>
-
-          <div>
-            <label style={labelStyle}>3. Code Snippet (Optional)</label>
-            <textarea rows="3" placeholder="Paste python/js snippet..." value={codeSnippet} onChange={(e) => setCodeSnippet(e.target.value)} style={{ ...inputStyle, fontFamily: 'monospace', background: '#020617', resize: 'vertical' }} />
-          </div>
-
-          <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.5rem' }}>
-            <button type="button" onClick={() => setIsModalOpen(false)} style={{
-              flex: 1, background: 'transparent', color: 'var(--text-color)', border: '1px solid rgba(100, 255, 218, 0.3)', padding: '10px', borderRadius: '8px', fontWeight: '600', cursor: 'pointer', fontSize: '0.9rem'
+        {/* Secure Password-Protected Confirmation Modal */}
+        <AnimatePresence>
+          {confirmConfig.isOpen && (
+            <div style={{
+              position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(5, 11, 20, 0.85)', backdropFilter: 'blur(5px)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1200, padding: '1rem', boxSizing: 'border-box'
             }}>
-              Cancel
-            </button>
-            <button type="submit" style={{
-              flex: 1, background: 'var(--accent-color)', color: '#050b14', padding: '10px', borderRadius: '8px', fontWeight: '600', border: 'none', cursor: 'pointer', fontSize: '0.9rem'
-            }}>
-              Save Lesson
-            </button>
-          </div>
-        </form>
-      </motion.div>
-    </div>
-  )}
-</AnimatePresence>
+              <motion.div 
+                initial={{ opacity: 0, scale: 0.98 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.98 }}
+                style={{
+                  background: 'var(--card-bg)', padding: '1.5rem 1.25rem', borderRadius: '16px', border: '1px solid rgba(239, 68, 68, 0.3)', width: '100%', maxWidth: '380px', textAlign: 'center', boxShadow: '0 20px 40px rgba(0,0,0,0.4)', boxSizing: 'border-box'
+                }}
+              >
+                <div style={{ display: 'inline-flex', padding: '12px', background: 'rgba(239, 68, 68, 0.1)', borderRadius: '50%', color: '#ef4444', marginBottom: '1rem' }}>
+                  <FiShield size={24} />
+                </div>
+                <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1.2rem' }}>{confirmConfig.title}</h3>
+                <p style={{ opacity: 0.8, fontSize: '0.9rem', margin: '0 0 1.25rem 0', lineHeight: '1.5' }}>
+                  {confirmConfig.message}
+                </p>
+
+                {confirmConfig.type === 'delete' && (
+                  <div style={{ marginBottom: '1.25rem', textAlign: 'left', width: '100%', boxSizing: 'border-box' }}>
+                    <div style={{ position: 'relative', width: '100%', display: 'flex', alignItems: 'center', boxSizing: 'border-box' }}>
+                      <input 
+                        type={showPassword ? "text" : "password"} 
+                        placeholder="Enter admin password..." 
+                        value={deletePassword}
+                        onChange={(e) => setDeletePassword(e.target.value)}
+                        disabled={isDeleting}
+                        style={{ ...inputStyle, paddingRight: '45px', margin: 0, width: '100%', boxSizing: 'border-box' }}
+                      />
+                      <button 
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        style={{ position: 'absolute', right: '12px', background: 'transparent', border: 'none', color: 'var(--text-color)', cursor: 'pointer', opacity: 0.7, display: 'flex', alignItems: 'center', padding: '4px' }}
+                      >
+                        {showPassword ? <FiEyeOff size={18} /> : <FiEye size={18} />}
+                      </button>
+                    </div>
+                    {deleteError && (
+                      <p style={{ color: '#ef4444', fontSize: '0.8rem', margin: '5px 0 0 0' }}>{deleteError}</p>
+                    )}
+                  </div>
+                )}
+
+                <div style={{ display: 'flex', gap: '0.75rem', width: '100%', boxSizing: 'border-box' }}>
+                  <button 
+                    onClick={() => { setConfirmConfig({ isOpen: false, title: '', message: '', type: '', dataId: null }); setDeletePassword(''); }} 
+                    disabled={isDeleting}
+                    style={{
+                      flex: 1, background: 'transparent', color: 'var(--text-color)', border: '1px solid rgba(100, 255, 218, 0.3)', padding: '10px', borderRadius: '8px', fontWeight: '600', cursor: 'pointer', fontSize: '0.9rem', opacity: isDeleting ? 0.5 : 1
+                    }}
+                  >
+                    Cancel
+                  </button>
+                  <button 
+                    onClick={handleConfirmedAction} 
+                    disabled={isDeleting}
+                    style={{
+                      flex: 1, background: confirmConfig.type === 'delete' ? '#ef4444' : 'var(--accent-color)', color: confirmConfig.type === 'delete' ? '#ffffff' : '#050b14', padding: '10px', borderRadius: '8px', fontWeight: '600', border: 'none', cursor: 'pointer', fontSize: '0.9rem', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '6px', opacity: isDeleting ? 0.7 : 1
+                    }}
+                  >
+                    {isDeleting ? <><FiLoader className="spin" size={16} /> Verifying...</> : (confirmConfig.type === 'delete' ? 'Verify & Delete' : 'Confirm')}
+                  </button>
+                </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
+
       </div>
       <Footer />
     </>
@@ -633,13 +596,15 @@ const Dashboard = () => {
 
 const inputStyle = {
   width: '100%',
+  maxWidth: '100%',
   padding: '10px 14px',
   background: 'var(--bg-color)',
   border: '1px solid rgba(100, 255, 218, 0.2)',
   borderRadius: '8px',
   color: 'var(--text-color)',
   fontSize: '0.9rem',
-  outline: 'none'
+  outline: 'none',
+  boxSizing: 'border-box'
 };
 
 const labelStyle = {
