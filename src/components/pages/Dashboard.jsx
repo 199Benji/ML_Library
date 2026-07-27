@@ -533,24 +533,27 @@ const Dashboard = () => {
       justifyContent: 'center',
       alignItems: 'center',
       zIndex: 1000,
-      padding: '1rem 0.75rem', // Safe horizontal margins for mobile screens
-      boxSizing: 'border-box'
+      padding: '1rem',
+      boxSizing: 'border-box',
+      overflowY: 'auto'
     }}>
       <motion.div 
-        initial={{ opacity: 0, scale: 0.95 }}
+        initial={{ opacity: 0, scale: 0.98 }}
         animate={{ opacity: 1, scale: 1 }}
-        exit={{ opacity: 0, scale: 0.95 }}
+        exit={{ opacity: 0, scale: 0.98 }}
+        transition={{ duration: 0.2 }}
         style={{
           background: 'var(--card-bg)',
           padding: '1.5rem 1.25rem',
           borderRadius: '16px',
           border: '1px solid rgba(100, 255, 218, 0.2)',
           width: '100%',
-          maxWidth: '480px', // Perfect width so it never touches the screen edges
-          maxHeight: '90vh',
+          maxWidth: '460px',
+          maxHeight: '88vh',
           overflowY: 'auto',
           boxShadow: '0 20px 40px rgba(0,0,0,0.4)',
-          boxSizing: 'border-box'
+          boxSizing: 'border-box',
+          margin: 'auto'
         }}
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
@@ -558,6 +561,7 @@ const Dashboard = () => {
             <FiPlus color="var(--accent-color)" /> Log New ML Lesson
           </h3>
           <button 
+            type="button"
             onClick={() => setIsModalOpen(false)}
             style={{ background: 'transparent', border: 'none', color: 'var(--text-color)', fontSize: '1.2rem', cursor: 'pointer', opacity: 0.7 }}
           >
@@ -567,7 +571,7 @@ const Dashboard = () => {
 
         <form onSubmit={handleAddLog} style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
           
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '0.85rem' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
             <div>
               <label style={labelStyle}>Day Number</label>
               <input type="number" placeholder="e.g. 68" value={dayNumber} onChange={(e) => setDayNumber(e.target.value)} required style={inputStyle} />
