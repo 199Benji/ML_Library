@@ -1,9 +1,10 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { FiTerminal, FiTrendingUp, FiCpu, FiArrowRight } from 'react-icons/fi';
+import { FiTerminal, FiTrendingUp, FiCpu, FiArrowRight, FiBookOpen } from 'react-icons/fi';
 import { motion } from 'framer-motion';
 import Footer from '../common/Footer';
 import Navbar from '../common/Navbar';
+import '../pages/PublicBlog'
 
 const LandingPage = () => {
   return (
@@ -35,7 +36,7 @@ const LandingPage = () => {
             letterSpacing: '0.5px',
             border: '1px solid rgba(100, 255, 218, 0.3)'
           }}>
-             Public Machine Learning Journey
+              Public Machine Learning Journey
           </span>
 
           <h1 style={{
@@ -60,12 +61,13 @@ const LandingPage = () => {
             Welcome to my personal command center. Documenting 90 days of deep-dives into data science, regression models, full-stack integration, and real-world AI applications.
           </p>
 
-          <div style={{ marginTop: '0.75rem' }}>
+          {/* Action Buttons Row */}
+          <div style={{ display: 'flex', gap: '1rem', marginTop: '0.75rem', flexWrap: 'wrap', justifyContent: 'center' }}>
             <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
               <Link to="/Dashboard" style={{
                 background: 'var(--accent-color)',
                 color: '#050b14',
-                padding: '12px 26px',
+                padding: '12px 24px',
                 borderRadius: '8px',
                 fontWeight: '600',
                 textDecoration: 'none',
@@ -76,6 +78,24 @@ const LandingPage = () => {
                 boxShadow: '0 4px 14px rgba(100, 255, 218, 0.2)'
               }}>
                 Enter Dashboard <FiArrowRight />
+              </Link>
+            </motion.div>
+
+            <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+              <Link to="/PublicBlog" style={{
+                background: 'transparent',
+                color: 'var(--accent-color)',
+                border: '1px solid var(--accent-color)',
+                padding: '12px 24px',
+                borderRadius: '8px',
+                fontWeight: '600',
+                textDecoration: 'none',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '8px',
+                fontSize: '0.95rem'
+              }}>
+                <FiBookOpen /> Public Blog
               </Link>
             </motion.div>
           </div>

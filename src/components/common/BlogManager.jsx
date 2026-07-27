@@ -1,27 +1,50 @@
 import React, { useState, useEffect } from 'react';
 import { db, auth } from '../../firebase';
-import { collection, addDoc, getDocs, query, orderBy, deleteDoc, doc } from 'firebase/firestore';
+import { collection, addDoc, getDocs, query, orderBy, deleteDoc, doc, updateDoc } from 'firebase/firestore';
 import { signInWithEmailAndPassword } from 'firebase/auth';
-import { FiPlus, FiTrash2, FiShield, FiEye, FiEyeOff, FiLoader } from 'react-icons/fi';
+import { FiPlus, FiTrash2, FiEdit2, FiShield, FiEye, FiEyeOff, FiLoader, FiUploadCloud } from 'react-icons/fi';
 import { motion, AnimatePresence } from 'framer-motion';
+
+const getTimeAgo = (timestamp) => {
+  if (!timestamp) return 'Just now';
+  const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+  const seconds = Math.floor((new Date() - date) / 1000);
+  let interval = seconds / 31536000;
+  if (interval > 1) return Math.floor(interval) + ' years ago';
+  interval = seconds / 2592000;
+  if (interval > 1) return Math.floor(interval) + ' months ago';
+  interval = seconds / 86400;
+  if (interval > 1) return Math.floor(interval) + ' days ago';
+  interval = seconds / 3600;
+  if (interval > 1) return Math.floor(interval) + ' hours ago';
+  interval = seconds / 60;
+  if (interval > 1) return Math.floor(interval) + ' minutes ago';
+  return 'Just now';
+};
 
 const BlogManager = ({ showToast }) => {
   const [posts, setPosts] = useState([]);
   const [isCreating, setIsCreating] = useState(false);
+  const [editingId, setEditingId] = useState(null);
   
-  // Blog Form State
   const [title, setTitle] = useState('');
   const [summary, setSummary] = useState('');
   const [coverImageUrl, setCoverImageUrl] = useState('');
   const [content, setContent] = useState('');
   const [tags, setTags] = useState('');
+  
+  // Loading States
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Delete & Security State
   const [confirmDeleteId, setConfirmDeleteId] = useState(null);
   const [deletePassword, setDeletePassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState('');
+
+  const CLOUDINARY_CLOUD_NAME = 'nmr00exl'; 
+  const CLOUDINARY_UPLOAD_PRESET = 'Ml Blog';
 
   const fetchPosts = async () => {
     try {
@@ -38,18 +61,81 @@ const BlogManager = ({ showToast }) => {
     fetchPosts();
   }, []);
 
-  const handleCreatePost = async (e) => {
-    e.preventDefault();
+  const handleImageUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    setIsUploadingImage(true);
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
+
     try {
-      await addDoc(collection(db, 'blog_posts'), {
+      const response = await fetch(
+        `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`,
+        {
+          method: 'POST',
+          body: formData,
+        }
+      );
+      const data = await response.json();
+      if (data.secure_url) {
+        setCoverImageUrl(data.secure_url);
+        showToast('Image uploaded successfully!');
+      } else {
+        showToast('Image upload failed.');
+      }
+    } catch (error) {
+      console.error('Cloudinary upload error:', error);
+      showToast('Error uploading image.');
+    } finally {
+      setIsUploadingImage(false);
+    }
+  };
+
+  const handleOpenCreate = () => {
+    setEditingId(null);
+    setTitle('');
+    setSummary('');
+    setCoverImageUrl('');
+    setContent('');
+    setTags('');
+    setIsCreating(true);
+  };
+
+  const handleOpenEdit = (post) => {
+    setEditingId(post.id);
+    setTitle(post.title || '');
+    setSummary(post.summary || '');
+    setCoverImageUrl(post.coverImageUrl || '');
+    setContent(post.content || '');
+    setTags(Array.isArray(post.tags) ? post.tags.join(', ') : '');
+    setIsCreating(true);
+  };
+
+  const handleSavePost = async (e) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    try {
+      const postData = {
         title,
         summary,
-        coverImageUrl,
+        coverImageUrl: coverImageUrl || '',
         content,
         tags: tags.split(',').map(t => t.trim()).filter(Boolean),
-        createdAt: new Date()
-      });
+        updatedAt: new Date()
+      };
 
+      if (editingId) {
+        await updateDoc(doc(db, 'blog_posts', editingId), postData);
+        showToast('Blog post updated successfully!');
+      } else {
+        postData.createdAt = new Date();
+        await addDoc(collection(db, 'blog_posts'), postData);
+        showToast('Blog post published successfully!');
+      }
+
+      setEditingId(null);
       setTitle('');
       setSummary('');
       setCoverImageUrl('');
@@ -57,14 +143,15 @@ const BlogManager = ({ showToast }) => {
       setTags('');
       setIsCreating(false);
       fetchPosts();
-      showToast('Blog post published successfully!');
     } catch (error) {
-      console.error('Error creating blog post:', error);
-      showToast('Error publishing post.');
+      console.error('Error saving blog post:', error);
+      showToast('Error saving post.');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
-  const handleConfirmedDelete = async () => {
+ const handleConfirmedDelete = async () => {
     setIsDeleting(true);
     setDeleteError('');
     try {
@@ -74,6 +161,7 @@ const BlogManager = ({ showToast }) => {
         setIsDeleting(false);
         return;
       }
+      // Re-authenticate user with email and password before deleting
       await signInWithEmailAndPassword(auth, user.email, deletePassword);
       await deleteDoc(doc(db, 'blog_posts', confirmDeleteId));
       fetchPosts();
@@ -89,17 +177,27 @@ const BlogManager = ({ showToast }) => {
   };
 
   return (
-    <div style={{ marginTop: '4rem', borderTop: '1px solid rgba(100, 255, 218, 0.15)', paddingTop: '2.5rem', width: '100%', boxSizing: 'border-box' }}>
+    <div style={{ marginTop: '4rem', borderTop: '1px solid rgba(100, 255, 218, 0.15)', paddingTop: '2.5rem' }}>
       
-      {/* Header Aligned with Dashboard Spacing */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem', width: '100%', boxSizing: 'border-box' }}>
+      {/* Injecting CSS Spinner Animation Keyframes */}
+      <style>{`
+        @keyframes spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+        .spin-loader {
+          animation: spin 1s linear infinite;
+        }
+      `}</style>
+
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
           <h2 style={{ fontSize: '1.4rem', fontWeight: '700', margin: 0 }}>Public Blog & Milestones</h2>
-          <p style={{ opacity: 0.7, margin: '4px 0 0 0', fontSize: '0.88rem' }}>Draft and push public updates without touching VS Code.</p>
+          <p style={{ opacity: 0.7, margin: '4px 0 0 0', fontSize: '0.88rem' }}>Upload images, draft, and push updates seamlessly.</p>
         </div>
         
         <button 
-          onClick={() => setIsCreating(!isCreating)}
+          onClick={() => isCreating ? setIsCreating(false) : handleOpenCreate()}
           style={{
             background: 'transparent',
             border: '1px solid var(--accent-color)',
@@ -119,7 +217,6 @@ const BlogManager = ({ showToast }) => {
         </button>
       </div>
 
-      {/* Blog Creation Form */}
       {isCreating && (
         <motion.div 
           initial={{ opacity: 0, y: -10 }}
@@ -130,14 +227,14 @@ const BlogManager = ({ showToast }) => {
             borderRadius: '12px',
             border: '1px solid rgba(100, 255, 218, 0.2)',
             marginBottom: '2rem',
-            boxShadow: '0 10px 30px rgba(0,0,0,0.3)',
-            width: '100%',
-            boxSizing: 'border-box'
+            boxShadow: '0 10px 30px rgba(0,0,0,0.3)'
           }}
         >
-          <h3 style={{ margin: '0 0 1rem 0', fontSize: '1.1rem' }}>Draft New Milestone Post</h3>
+          <h3 style={{ margin: '0 0 1rem 0', fontSize: '1.1rem' }}>
+            {editingId ? 'Edit Milestone Post' : 'Draft New Milestone Post'}
+          </h3>
           
-          <form onSubmit={handleCreatePost} style={{ display: 'flex', flexDirection: 'column', gap: '0.9rem', width: '100%', boxSizing: 'border-box' }}>
+          <form onSubmit={handleSavePost} style={{ display: 'flex', flexDirection: 'column', gap: '0.9rem' }}>
             <div>
               <label style={labelStyle}>Post Title</label>
               <input type="text" placeholder="e.g. Hitting Day 70 of #90DaysOfLearningML" value={title} onChange={(e) => setTitle(e.target.value)} required style={inputStyle} />
@@ -148,9 +245,37 @@ const BlogManager = ({ showToast }) => {
               <input type="text" placeholder="Brief hook for readers..." value={summary} onChange={(e) => setSummary(e.target.value)} required style={inputStyle} />
             </div>
 
+            {/* Direct Image Upload Field with Loading Spinner */}
             <div>
-              <label style={labelStyle}>Cover Image Direct URL (Imgur, Cloudinary, etc.)</label>
-              <input type="url" placeholder="https://images.unsplash.com/..." value={coverImageUrl} onChange={(e) => setCoverImageUrl(e.target.value)} style={inputStyle} />
+              <label style={labelStyle}>Cover Image (Upload from phone/PC)</label>
+              <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+                <label style={{
+                  background: 'rgba(100, 255, 218, 0.1)',
+                  border: '1px dashed var(--accent-color)',
+                  color: 'var(--accent-color)',
+                  padding: '10px 16px',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  fontSize: '0.88rem',
+                  fontWeight: '600',
+                  flex: 1
+                }}>
+                  {isUploadingImage ? <FiLoader size={18} className="spin-loader" /> : <FiUploadCloud size={18} />}
+                  {isUploadingImage ? 'Uploading to Cloudinary...' : 'Choose Image File'}
+                  <input type="file" accept="image/*" onChange={handleImageUpload} style={{ display: 'none' }} disabled={isUploadingImage} />
+                </label>
+                {coverImageUrl && !isUploadingImage && (
+                  <span style={{ fontSize: '0.75rem', color: 'var(--accent-color)' }}>✓ Image Uploaded</span>
+                )}
+              </div>
+              {coverImageUrl && (
+                <div style={{ marginTop: '8px', height: '80px', width: '120px', borderRadius: '6px', overflow: 'hidden', border: '1px solid rgba(100,255,218,0.2)' }}>
+                  <img src={coverImageUrl} alt="Preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                </div>
+              )}
             </div>
 
             <div>
@@ -163,12 +288,31 @@ const BlogManager = ({ showToast }) => {
               <input type="text" placeholder="ml, python, career" value={tags} onChange={(e) => setTags(e.target.value)} style={inputStyle} />
             </div>
 
-            <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.5rem', width: '100%', boxSizing: 'border-box' }}>
+            <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.5rem' }}>
               <button type="button" onClick={() => setIsCreating(false)} style={{ flex: 1, background: 'transparent', color: 'var(--text-color)', border: '1px solid rgba(100, 255, 218, 0.3)', padding: '10px', borderRadius: '8px', cursor: 'pointer', fontWeight: '600' }}>
                 Cancel
               </button>
-              <button type="submit" style={{ flex: 1, background: 'var(--accent-color)', color: '#050b14', padding: '10px', borderRadius: '8px', border: 'none', cursor: 'pointer', fontWeight: '600' }}>
-                Publish Post
+              <button 
+                type="submit" 
+                disabled={isUploadingImage || isSubmitting} 
+                style={{ 
+                  flex: 1, 
+                  background: 'var(--accent-color)', 
+                  color: '#050b14', 
+                  padding: '10px', 
+                  borderRadius: '8px', 
+                  border: 'none', 
+                  cursor: 'pointer', 
+                  fontWeight: '600', 
+                  display: 'flex',
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  gap: '8px',
+                  opacity: (isUploadingImage || isSubmitting) ? 0.6 : 1 
+                }}
+              >
+                {isSubmitting && <FiLoader size={16} className="spin-loader" />}
+                {isSubmitting ? 'Saving...' : (editingId ? 'Update Post' : 'Publish Post')}
               </button>
             </div>
           </form>
@@ -176,26 +320,33 @@ const BlogManager = ({ showToast }) => {
       )}
 
       {/* Published Blog Posts Grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.25rem', width: '100%', boxSizing: 'border-box' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.25rem' }}>
         {posts.length === 0 ? (
-          <div style={{ gridColumn: '1 / -1', opacity: 0.6, fontSize: '0.9rem', padding: '1.5rem', background: 'var(--card-bg)', borderRadius: '10px', textAlign: 'center', boxSizing: 'border-box' }}>
+          <div style={{ gridColumn: '1 / -1', opacity: 0.6, fontSize: '0.9rem', padding: '1.5rem', background: 'var(--card-bg)', borderRadius: '10px', textAlign: 'center' }}>
             No blog posts published yet. Click "New Blog Post" to share your first milestone!
           </div>
         ) : (
           posts.map(post => (
-            <div key={post.id} style={{ background: 'var(--card-bg)', borderRadius: '12px', border: '1px solid rgba(100, 255, 218, 0.15)', overflow: 'hidden', display: 'flex', flexDirection: 'column', boxShadow: '0 8px 20px rgba(0,0,0,0.2)', width: '100%', boxSizing: 'border-box' }}>
+            <div key={post.id} style={{ background: 'var(--card-bg)', borderRadius: '12px', border: '1px solid rgba(100, 255, 218, 0.15)', overflow: 'hidden', display: 'flex', flexDirection: 'column', boxShadow: '0 8px 20px rgba(0,0,0,0.2)' }}>
               {post.coverImageUrl && (
                 <div style={{ height: '140px', width: '100%', overflow: 'hidden', background: '#020617' }}>
                   <img src={post.coverImageUrl} alt={post.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                 </div>
               )}
-              <div style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', flex: 1, justifyContent: 'space-between', boxSizing: 'border-box' }}>
+              <div style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', flex: 1, justifyContent: 'space-between' }}>
                 <div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                    <span style={{ fontSize: '0.75rem', opacity: 0.6 }}>{post.createdAt?.toDate ? post.createdAt.toDate().toLocaleDateString() : 'Recent'}</span>
-                    <button onClick={() => setConfirmDeleteId(post.id)} style={{ background: 'transparent', border: 'none', color: '#ef4444', cursor: 'pointer', opacity: 0.8 }}>
-                      <FiTrash2 size={15} />
-                    </button>
+                    <span style={{ fontSize: '0.75rem', opacity: 0.6, color: 'var(--accent-color)', fontWeight: '600' }}>
+                      {getTimeAgo(post.createdAt)}
+                    </span>
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      <button onClick={() => handleOpenEdit(post)} title="Edit Post" style={{ background: 'transparent', border: 'none', color: 'var(--accent-color)', cursor: 'pointer', opacity: 0.8 }}>
+                        <FiEdit2 size={15} />
+                      </button>
+                      <button onClick={() => setConfirmDeleteId(post.id)} title="Delete Post" style={{ background: 'transparent', border: 'none', color: '#ef4444', cursor: 'pointer', opacity: 0.8 }}>
+                        <FiTrash2 size={15} />
+                      </button>
+                    </div>
                   </div>
                   <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1.1rem', wordBreak: 'break-word' }}>{post.title}</h3>
                   <p style={{ opacity: 0.8, fontSize: '0.85rem', margin: 0, lineHeight: '1.4', wordBreak: 'break-word' }}>{post.summary}</p>
@@ -244,7 +395,7 @@ const BlogManager = ({ showToast }) => {
                   Cancel
                 </button>
                 <button onClick={handleConfirmedDelete} disabled={isDeleting} style={{ flex: 1, background: '#ef4444', color: '#ffffff', padding: '10px', borderRadius: '8px', fontWeight: '600', border: 'none', cursor: 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '6px' }}>
-                  {isDeleting ? <><FiLoader className="spin" size={16} /> Verifying...</> : 'Delete'}
+                  {isDeleting ? <><FiLoader size={16} className="spin-loader" /> Verifying...</> : 'Delete'}
                 </button>
               </div>
             </motion.div>

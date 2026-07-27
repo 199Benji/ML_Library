@@ -4,6 +4,7 @@ import Register from '../components/pages/auth/Register';
 import LandingPage from '../components/pages/LandingPage';
 import Dashboard from '../components/pages/Dashboard'; 
 import ProtectedRoute from '../routes/ProtectedRoute';
+import PublicBlog from '../components/pages/PublicBlog';
 
 const AppRoutes = () => {
     return (
@@ -12,6 +13,7 @@ const AppRoutes = () => {
             <Route path="/" element={<LandingPage />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
+            <Route path="/publicblog" element={<PublicBlog />} />
 
             {/* Protected Route */}
             <Route path="/dashboard" element={
