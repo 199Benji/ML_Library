@@ -14,11 +14,11 @@ const Navbar = () => {
       padding: '1rem 1.5rem',
       backgroundColor: 'var(--card-bg)',
       borderBottom: '1px solid rgba(100, 255, 218, 0.1)',
-      position: 'fixed', // <--- Makes it stagnant at the top
-      top: 0,            // <--- Anchors it to the very top
+      position: 'fixed',
+      top: 0,
       left: 0,
       right: 0,
-      zIndex: 1000       // <--- Ensures it stays above all content
+      zIndex: 1000
     }}>
       {/* Brand Logo */}
       <Link to="/" style={{ 

@@ -2,13 +2,18 @@ import React, { useState, useEffect } from 'react';
 import { FiSun, FiMoon } from 'react-icons/fi';
 
 const ThemeToggle = () => {
-  const [isDarkMode, setIsDarkMode] = useState(true);
+  const [isDarkMode, setIsDarkMode] = useState(() => {
+    const savedTheme = localStorage.getItem('theme');
+    return savedTheme ? savedTheme === 'dark' : true;
+  });
 
   useEffect(() => {
     if (isDarkMode) {
       document.body.classList.remove('light');
+      localStorage.setItem('theme', 'dark');
     } else {
       document.body.classList.add('light');
+      localStorage.setItem('theme', 'light');
     }
   }, [isDarkMode]);
 
