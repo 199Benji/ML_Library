@@ -1,12 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { db, auth } from '../../firebase';
-import { collection, addDoc, getDocs, query, orderBy, deleteDoc, doc } from 'firebase/firestore';
+import { collection, addDoc, getDocs, query, orderBy, deleteDoc, doc, updateDoc } from 'firebase/firestore';
 import { signOut, signInWithEmailAndPassword } from 'firebase/auth';
 import { useNavigate } from 'react-router-dom';
 import Navbar from '../common/Navbar';
 import Footer from '../common/Footer';
-import BlogManager from '../common/BlogManager'
-import { FiPlus, FiLogOut, FiSearch, FiCopy, FiCheck, FiTrash2, FiCode, FiArrowLeft, FiTerminal, FiTrendingUp, FiCpu, FiLayers, FiShield, FiEye, FiEyeOff, FiLoader, FiBookOpen } from 'react-icons/fi';
+import { FiPlus, FiLogOut, FiSearch, FiCopy, FiCheck, FiTrash2, FiCode, FiArrowLeft, FiTerminal, FiTrendingUp, FiCpu, FiLayers, FiShield, FiEye, FiEyeOff, FiLoader, FiBookOpen, FiEdit2 } from 'react-icons/fi';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const Dashboard = () => {
@@ -14,6 +13,7 @@ const Dashboard = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [activeCategory, setActiveCategory] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingId, setEditingId] = useState(null);
   
   // Clean 4-Part Form State
   const [dayNumber, setDayNumber] = useState('');
@@ -62,31 +62,60 @@ const Dashboard = () => {
     setTimeout(() => setToastMessage(''), 3000);
   };
 
-  const handleAddLog = async (e) => {
+  const handleOpenCreate = () => {
+    setEditingId(null);
+    setDayNumber('');
+    setTopic('');
+    setLearnedContent('');
+    setTakeaways('');
+    setCodeSnippet('');
+    setIsModalOpen(true);
+  };
+
+  const handleOpenEdit = (log) => {
+    setEditingId(log.id);
+    setDayNumber(log.dayNumber || '');
+    setCategory(log.category || 'Preprocessing');
+    setTopic(log.title || '');
+    setLearnedContent(log.learnedContent || '');
+    setTakeaways(log.takeaways || '');
+    setCodeSnippet(log.codeSnippet || '');
+    setIsModalOpen(true);
+  };
+
+  const handleSaveLog = async (e) => {
     e.preventDefault();
     try {
-      await addDoc(collection(db, 'daily_logs'), {
+      const logData = {
         dayNumber: Number(dayNumber),
         category,
         title: topic,
         learnedContent,
         takeaways,
         codeSnippet,
-        createdAt: new Date()
-      });
+        updatedAt: new Date()
+      };
 
-      // Reset Form
+      if (editingId) {
+        await updateDoc(doc(db, 'daily_logs', editingId), logData);
+        showToast('Lesson updated successfully!');
+      } else {
+        logData.createdAt = new Date();
+        await addDoc(collection(db, 'daily_logs'), logData);
+        showToast('Successfully saved to your knowledge base!');
+      }
+
+      // Reset Form & Close Modal
+      setEditingId(null);
       setDayNumber('');
       setTopic('');
       setLearnedContent('');
       setTakeaways('');
       setCodeSnippet('');
-      
       setIsModalOpen(false);
       fetchLogs();
-      showToast('Successfully saved to your knowledge base!');
     } catch (error) {
-      console.error('Error adding log:', error);
+      console.error('Error saving log:', error);
     }
   };
 
@@ -206,7 +235,7 @@ const Dashboard = () => {
           </div>
           
           <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
-            <button onClick={() => navigate('/BlogManager')} style={{
+            <button onClick={() => navigate('/blog/manage')} style={{
               background: 'transparent',
               border: '1px solid var(--accent-color)',
               color: 'var(--accent-color)',
@@ -222,7 +251,7 @@ const Dashboard = () => {
               <FiBookOpen /> Manage Blog
             </button>
 
-            <button onClick={() => setIsModalOpen(true)} style={{
+            <button onClick={handleOpenCreate} style={{
               background: 'var(--accent-color)',
               color: '#050b14',
               border: 'none',
@@ -356,13 +385,22 @@ const Dashboard = () => {
                         <span style={{ background: 'rgba(100, 255, 218, 0.1)', color: 'var(--accent-color)', padding: '3px 10px', borderRadius: '12px', fontSize: '0.75rem', fontWeight: '600' }}>
                           Day {log.dayNumber}
                         </span>
-                        <button 
-                          onClick={() => promptDelete(log.id)}
-                          title="Delete Entry"
-                          style={{ background: 'transparent', border: 'none', color: '#ef4444', cursor: 'pointer', opacity: 0.8, padding: '4px' }}
-                        >
-                          <FiTrash2 size={16} />
-                        </button>
+                        <div style={{ display: 'flex', gap: '8px' }}>
+                          <button 
+                            onClick={() => handleOpenEdit(log)}
+                            title="Edit Entry"
+                            style={{ background: 'transparent', border: 'none', color: 'var(--accent-color)', cursor: 'pointer', opacity: 0.8, padding: '4px' }}
+                          >
+                            <FiEdit2 size={16} />
+                          </button>
+                          <button 
+                            onClick={() => promptDelete(log.id)}
+                            title="Delete Entry"
+                            style={{ background: 'transparent', border: 'none', color: '#ef4444', cursor: 'pointer', opacity: 0.8, padding: '4px' }}
+                          >
+                            <FiTrash2 size={16} />
+                          </button>
+                        </div>
                       </div>
 
                       <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1.15rem' }}>{log.title}</h3>
@@ -430,7 +468,7 @@ const Dashboard = () => {
           </div>
         )}
 
-        {/* Perfectly Centered & Sized Modal Form */}
+        {/* Modal Form for Create/Edit */}
         <AnimatePresence>
           {isModalOpen && (
             <div style={{
@@ -467,7 +505,7 @@ const Dashboard = () => {
               >
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
                   <h3 style={{ margin: 0, fontSize: '1.1rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <FiPlus color="var(--accent-color)" /> Log New ML Lesson
+                    <FiPlus color="var(--accent-color)" /> {editingId ? 'Edit ML Lesson' : 'Log New ML Lesson'}
                   </h3>
                   <button 
                     onClick={() => setIsModalOpen(false)}
@@ -477,7 +515,7 @@ const Dashboard = () => {
                   </button>
                 </div>
 
-                <form onSubmit={handleAddLog} style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem', width: '100%', boxSizing: 'border-box' }}>
+                <form onSubmit={handleSaveLog} style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem', width: '100%', boxSizing: 'border-box' }}>
                   
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', width: '100%', boxSizing: 'border-box' }}>
                     <div style={{ width: '100%', boxSizing: 'border-box' }}>
@@ -525,7 +563,7 @@ const Dashboard = () => {
                     <button type="submit" style={{
                       flex: 1, background: 'var(--accent-color)', color: '#050b14', padding: '10px', borderRadius: '8px', fontWeight: '600', border: 'none', cursor: 'pointer', fontSize: '0.9rem'
                     }}>
-                      Save Lesson
+                      {editingId ? 'Update Lesson' : 'Save Lesson'}
                     </button>
                   </div>
                 </form>
