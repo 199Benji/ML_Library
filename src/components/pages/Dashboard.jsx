@@ -5,7 +5,7 @@ import { signOut, signInWithEmailAndPassword } from 'firebase/auth';
 import { useNavigate } from 'react-router-dom';
 import Navbar from '../common/Navbar';
 import Footer from '../common/Footer';
-import { FiPlus, FiLogOut, FiSearch, FiCopy, FiCheck, FiTrash2, FiCode, FiArrowLeft, FiTerminal, FiTrendingUp, FiCpu, FiLayers, FiShield, FiEye, FiEyeOff, FiLoader, FiBookOpen, FiEdit2, FiAward, FiMaximize2 } from 'react-icons/fi';
+import { FiPlus, FiLogOut, FiSearch, FiCopy, FiCheck, FiTrash2, FiCode, FiArrowLeft, FiTerminal, FiTrendingUp, FiCpu, FiLayers, FiShield, FiEye, FiEyeOff, FiLoader, FiBookOpen, FiEdit2, FiAward, FiMaximize2, FiFileText } from 'react-icons/fi';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const Dashboard = () => {
@@ -18,7 +18,8 @@ const Dashboard = () => {
   // Full Card View Modal State
   const [selectedLogModal, setSelectedLogModal] = useState(null);
   
-  // Clean Form State with Interview Nuggets Field
+  // Form State with Entry Type Support
+  const [entryType, setEntryType] = useState('full'); // 'full' or 'keynote'
   const [dayNumber, setDayNumber] = useState('');
   const [category, setCategory] = useState('Preprocessing');
   const [topic, setTopic] = useState('');
@@ -26,6 +27,7 @@ const Dashboard = () => {
   const [takeaways, setTakeaways] = useState('');
   const [interviewNuggets, setInterviewNuggets] = useState('');
   const [codeSnippet, setCodeSnippet] = useState('');
+  const [keynoteContent, setKeynoteContent] = useState('');
 
   // Confirmation & Security State with Loading & Eye Toggle
   const [confirmConfig, setConfirmConfig] = useState({ isOpen: false, title: '', message: '', type: '', dataId: null });
@@ -68,18 +70,21 @@ const Dashboard = () => {
 
   const handleOpenCreate = () => {
     setEditingId(null);
+    setEntryType('full');
     setDayNumber('');
     setTopic('');
     setLearnedContent('');
     setTakeaways('');
     setInterviewNuggets('');
     setCodeSnippet('');
+    setKeynoteContent('');
     setIsModalOpen(true);
   };
 
   const handleOpenEdit = (log, e) => {
     if (e) e.stopPropagation();
     setEditingId(log.id);
+    setEntryType(log.entryType || (log.keynoteContent ? 'keynote' : 'full'));
     setDayNumber(log.dayNumber || '');
     setCategory(log.category || 'Preprocessing');
     setTopic(log.title || '');
@@ -87,6 +92,7 @@ const Dashboard = () => {
     setTakeaways(log.takeaways || '');
     setInterviewNuggets(log.interviewNuggets || '');
     setCodeSnippet(log.codeSnippet || '');
+    setKeynoteContent(log.keynoteContent || '');
     setIsModalOpen(true);
   };
 
@@ -94,15 +100,27 @@ const Dashboard = () => {
     e.preventDefault();
     try {
       const logData = {
+        entryType,
         dayNumber: Number(dayNumber),
         category,
         title: topic,
-        learnedContent,
-        takeaways,
-        interviewNuggets,
-        codeSnippet,
         updatedAt: new Date()
       };
+
+      if (entryType === 'keynote') {
+        logData.keynoteContent = keynoteContent;
+        // Clean unused fields for cleanliness
+        logData.learnedContent = '';
+        logData.takeaways = '';
+        logData.interviewNuggets = '';
+        logData.codeSnippet = '';
+      } else {
+        logData.learnedContent = learnedContent;
+        logData.takeaways = takeaways;
+        logData.interviewNuggets = interviewNuggets;
+        logData.codeSnippet = codeSnippet;
+        logData.keynoteContent = '';
+      }
 
       if (editingId) {
         await updateDoc(doc(db, 'daily_logs', editingId), logData);
@@ -115,12 +133,14 @@ const Dashboard = () => {
 
       // Reset Form & Close Modal
       setEditingId(null);
+      setEntryType('full');
       setDayNumber('');
       setTopic('');
       setLearnedContent('');
       setTakeaways('');
       setInterviewNuggets('');
       setCodeSnippet('');
+      setKeynoteContent('');
       setIsModalOpen(false);
       fetchLogs();
     } catch (error) {
@@ -202,7 +222,8 @@ const Dashboard = () => {
       (log.title && log.title.toLowerCase().includes(queryText)) ||
       (log.learnedContent && log.learnedContent.toLowerCase().includes(queryText)) ||
       (log.takeaways && log.takeaways.toLowerCase().includes(queryText)) ||
-      (log.interviewNuggets && log.interviewNuggets.toLowerCase().includes(queryText));
+      (log.interviewNuggets && log.interviewNuggets.toLowerCase().includes(queryText)) ||
+      (log.keynoteContent && log.keynoteContent.toLowerCase().includes(queryText));
       
     return matchesCategory && matchesSearch;
   }) : [];
@@ -381,123 +402,144 @@ const Dashboard = () => {
                   No guidelines or snippets saved under {activeCategory} yet. Click "Add New Entry" to create one!
                 </div>
               ) : (
-                filteredLogs.map(log => (
-                  <motion.div 
-                    key={log.id} 
-                    whileHover={{ scale: 1.01 }}
-                    onClick={() => setSelectedLogModal(log)}
-                    style={{
-                      background: 'var(--card-bg)',
-                      padding: '1.25rem',
-                      borderRadius: '12px',
-                      border: '1px solid rgba(100, 255, 218, 0.15)',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      justifyContent: 'space-between',
-                      boxShadow: '0 8px 20px rgba(0,0,0,0.2)',
-                      cursor: 'pointer',
-                      position: 'relative'
-                    }}
-                  >
-                    <div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
-                        <span style={{ background: 'rgba(100, 255, 218, 0.1)', color: 'var(--accent-color)', padding: '3px 10px', borderRadius: '12px', fontSize: '0.75rem', fontWeight: '600' }}>
-                          Day {log.dayNumber}
-                        </span>
-                        <div style={{ display: 'flex', gap: '8px' }} onClick={(e) => e.stopPropagation()}>
-                          <button 
-                            onClick={(e) => handleOpenEdit(log, e)}
-                            title="Edit Entry"
-                            style={{ background: 'transparent', border: 'none', color: 'var(--accent-color)', cursor: 'pointer', opacity: 0.8, padding: '4px' }}
-                          >
-                            <FiEdit2 size={16} />
-                          </button>
-                          <button 
-                            onClick={(e) => promptDelete(log.id, e)}
-                            title="Delete Entry"
-                            style={{ background: 'transparent', border: 'none', color: '#ef4444', cursor: 'pointer', opacity: 0.8, padding: '4px' }}
-                          >
-                            <FiTrash2 size={16} />
-                          </button>
+                filteredLogs.map(log => {
+                  const isKeynote = log.entryType === 'keynote' || Boolean(log.keynoteContent && !log.learnedContent);
+                  return (
+                    <motion.div 
+                      key={log.id} 
+                      whileHover={{ scale: 1.01 }}
+                      onClick={() => setSelectedLogModal(log)}
+                      style={{
+                        background: 'var(--card-bg)',
+                        padding: '1.25rem',
+                        borderRadius: '12px',
+                        border: isKeynote ? '1px dashed rgba(100, 255, 218, 0.3)' : '1px solid rgba(100, 255, 218, 0.15)',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        justifyContent: 'space-between',
+                        boxShadow: '0 8px 20px rgba(0,0,0,0.2)',
+                        cursor: 'pointer',
+                        position: 'relative'
+                      }}
+                    >
+                      <div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+                          <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                            <span style={{ background: 'rgba(100, 255, 218, 0.1)', color: 'var(--accent-color)', padding: '3px 10px', borderRadius: '12px', fontSize: '0.75rem', fontWeight: '600' }}>
+                              Day {log.dayNumber}
+                            </span>
+                            {isKeynote && (
+                              <span style={{ background: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6', padding: '3px 8px', borderRadius: '12px', fontSize: '0.7rem', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '3px' }}>
+                                <FiFileText size={10} /> Keynote
+                              </span>
+                            )}
+                          </div>
+                          <div style={{ display: 'flex', gap: '8px' }} onClick={(e) => e.stopPropagation()}>
+                            <button 
+                              onClick={(e) => handleOpenEdit(log, e)}
+                              title="Edit Entry"
+                              style={{ background: 'transparent', border: 'none', color: 'var(--accent-color)', cursor: 'pointer', opacity: 0.8, padding: '4px' }}
+                            >
+                              <FiEdit2 size={16} />
+                            </button>
+                            <button 
+                              onClick={(e) => promptDelete(log.id, e)}
+                              title="Delete Entry"
+                              style={{ background: 'transparent', border: 'none', color: '#ef4444', cursor: 'pointer', opacity: 0.8, padding: '4px' }}
+                            >
+                              <FiTrash2 size={16} />
+                            </button>
+                          </div>
                         </div>
-                      </div>
 
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px' }}>
-                        <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1.15rem' }}>{log.title}</h3>
-                        <span style={{ fontSize: '0.75rem', color: 'var(--accent-color)', display: 'flex', alignItems: 'center', gap: '4px', opacity: 0.7, whiteSpace: 'nowrap' }}>
-                          <FiMaximize2 size={12} /> Expand
-                        </span>
-                      </div>
-                      
-                      {log.learnedContent && (
-                        <div style={{ marginBottom: '0.75rem' }}>
-                          <span style={{ fontSize: '0.75rem', color: 'var(--accent-color)', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px' }}>What I Learned:</span>
-                          <p style={{ opacity: 0.85, fontSize: '0.88rem', margin: '2px 0 0 0', lineHeight: '1.5', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
-                            {log.learnedContent}
-                          </p>
-                        </div>
-                      )}
-
-                      {log.takeaways && (
-                        <div style={{ marginBottom: '0.75rem', background: 'rgba(100, 255, 218, 0.03)', padding: '8px 10px', borderRadius: '8px', borderLeft: '3px solid var(--accent-color)' }}>
-                          <span style={{ fontSize: '0.75rem', color: 'var(--accent-color)', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Rules / Takeaways:</span>
-                          <p style={{ opacity: 0.9, fontSize: '0.88rem', margin: '2px 0 0 0', lineHeight: '1.4', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
-                            {log.takeaways}
-                          </p>
-                        </div>
-                      )}
-
-                      {log.interviewNuggets && (
-                        <div style={{ marginBottom: '1rem', background: 'rgba(245, 158, 11, 0.05)', padding: '8px 10px', borderRadius: '8px', borderLeft: '3px solid #f59e0b' }}>
-                          <span style={{ fontSize: '0.75rem', color: '#f59e0b', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                            <FiAward size={12} /> Interview Nuggets:
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px' }}>
+                          <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1.15rem' }}>{log.title}</h3>
+                          <span style={{ fontSize: '0.75rem', color: 'var(--accent-color)', display: 'flex', alignItems: 'center', gap: '4px', opacity: 0.7, whiteSpace: 'nowrap' }}>
+                            <FiMaximize2 size={12} /> Expand
                           </span>
-                          <p style={{ opacity: 0.9, fontSize: '0.88rem', margin: '2px 0 0 0', lineHeight: '1.4', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
-                            {log.interviewNuggets}
-                          </p>
+                        </div>
+                        
+                        {isKeynote ? (
+                          <div style={{ marginBottom: '1rem', background: 'rgba(59, 130, 246, 0.04)', padding: '10px', borderRadius: '8px', borderLeft: '3px solid #3b82f6' }}>
+                            <span style={{ fontSize: '0.75rem', color: '#3b82f6', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Keynote / Quick Note:</span>
+                            <p style={{ opacity: 0.9, fontSize: '0.88rem', margin: '2px 0 0 0', lineHeight: '1.4', display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden', whiteSpace: 'pre-wrap' }}>
+                              {log.keynoteContent}
+                            </p>
+                          </div>
+                        ) : (
+                          <>
+                            {log.learnedContent && (
+                              <div style={{ marginBottom: '0.75rem' }}>
+                                <span style={{ fontSize: '0.75rem', color: 'var(--accent-color)', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px' }}>What I Learned:</span>
+                                <p style={{ opacity: 0.85, fontSize: '0.88rem', margin: '2px 0 0 0', lineHeight: '1.5', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                                  {log.learnedContent}
+                                </p>
+                              </div>
+                            )}
+
+                            {log.takeaways && (
+                              <div style={{ marginBottom: '0.75rem', background: 'rgba(100, 255, 218, 0.03)', padding: '8px 10px', borderRadius: '8px', borderLeft: '3px solid var(--accent-color)' }}>
+                                <span style={{ fontSize: '0.75rem', color: 'var(--accent-color)', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Rules / Takeaways:</span>
+                                <p style={{ opacity: 0.9, fontSize: '0.88rem', margin: '2px 0 0 0', lineHeight: '1.4', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                                  {log.takeaways}
+                                </p>
+                              </div>
+                            )}
+
+                            {log.interviewNuggets && (
+                              <div style={{ marginBottom: '1rem', background: 'rgba(245, 158, 11, 0.05)', padding: '8px 10px', borderRadius: '8px', borderLeft: '3px solid #f59e0b' }}>
+                                <span style={{ fontSize: '0.75rem', color: '#f59e0b', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                  <FiAward size={12} /> Interview Nuggets:
+                                </span>
+                                <p style={{ opacity: 0.9, fontSize: '0.88rem', margin: '2px 0 0 0', lineHeight: '1.4', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                                  {log.interviewNuggets}
+                                </p>
+                              </div>
+                            )}
+                          </>
+                        )}
+                      </div>
+
+                      {!isKeynote && log.codeSnippet && (
+                        <div style={{ position: 'relative', marginTop: 'auto' }} onClick={(e) => e.stopPropagation()}>
+                          <div style={{
+                            background: '#020617',
+                            padding: '10px',
+                            borderRadius: '8px',
+                            border: '1px solid rgba(100, 255, 218, 0.2)',
+                            fontFamily: 'monospace',
+                            fontSize: '0.8rem',
+                            overflowX: 'auto',
+                            color: '#64ffda',
+                            maxHeight: '100px'
+                          }}>
+                            <pre style={{ margin: 0 }}>{log.codeSnippet}</pre>
+                          </div>
+                          <button
+                            onClick={(e) => handleCopyCode(log.codeSnippet, log.id, e)}
+                            style={{
+                              position: 'absolute',
+                              top: '6px',
+                              right: '6px',
+                              background: 'rgba(100, 255, 218, 0.1)',
+                              border: '1px solid rgba(100, 255, 218, 0.3)',
+                              color: 'var(--accent-color)',
+                              padding: '3px 8px',
+                              borderRadius: '6px',
+                              fontSize: '0.7rem',
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '4px'
+                            }}
+                          >
+                            {copiedId === log.id ? <><FiCheck /> Copied</> : <><FiCopy /> Copy</>}
+                          </button>
                         </div>
                       )}
-                    </div>
-
-                    {log.codeSnippet && (
-                      <div style={{ position: 'relative', marginTop: 'auto' }} onClick={(e) => e.stopPropagation()}>
-                        <div style={{
-                          background: '#020617',
-                          padding: '10px',
-                          borderRadius: '8px',
-                          border: '1px solid rgba(100, 255, 218, 0.2)',
-                          fontFamily: 'monospace',
-                          fontSize: '0.8rem',
-                          overflowX: 'auto',
-                          color: '#64ffda',
-                          maxHeight: '100px'
-                        }}>
-                          <pre style={{ margin: 0 }}>{log.codeSnippet}</pre>
-                        </div>
-                        <button
-                          onClick={(e) => handleCopyCode(log.codeSnippet, log.id, e)}
-                          style={{
-                            position: 'absolute',
-                            top: '6px',
-                            right: '6px',
-                            background: 'rgba(100, 255, 218, 0.1)',
-                            border: '1px solid rgba(100, 255, 218, 0.3)',
-                            color: 'var(--accent-color)',
-                            padding: '3px 8px',
-                            borderRadius: '6px',
-                            fontSize: '0.7rem',
-                            cursor: 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '4px'
-                          }}
-                        >
-                          {copiedId === log.id ? <><FiCheck /> Copied</> : <><FiCopy /> Copy</>}
-                        </button>
-                      </div>
-                    )}
-                  </motion.div>
-                ))
+                    </motion.div>
+                  );
+                })
               )}
             </div>
           </div>
@@ -549,6 +591,11 @@ const Dashboard = () => {
                     <span style={{ fontSize: '0.85rem', opacity: 0.7, fontWeight: '500' }}>
                       {selectedLogModal.category}
                     </span>
+                    {(selectedLogModal.entryType === 'keynote' || selectedLogModal.keynoteContent) && (
+                      <span style={{ background: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6', padding: '3px 10px', borderRadius: '12px', fontSize: '0.75rem', fontWeight: '600' }}>
+                        Keynote Note
+                      </span>
+                    )}
                   </div>
                   <button 
                     onClick={() => setSelectedLogModal(null)}
@@ -560,74 +607,85 @@ const Dashboard = () => {
 
                 <h2 style={{ margin: 0, fontSize: '1.5rem', color: 'var(--accent-color)' }}>{selectedLogModal.title}</h2>
 
-                {selectedLogModal.learnedContent && (
-                  <div>
-                    <h4 style={{ fontSize: '0.8rem', color: 'var(--accent-color)', margin: '0 0 4px 0', textTransform: 'uppercase', letterSpacing: '0.5px' }}>What I Learned:</h4>
-                    <p style={{ opacity: 0.9, fontSize: '0.95rem', margin: 0, lineHeight: '1.6', whiteSpace: 'pre-wrap' }}>
-                      {selectedLogModal.learnedContent}
-                    </p>
-                  </div>
-                )}
-
-                {selectedLogModal.takeaways && (
-                  <div style={{ background: 'rgba(100, 255, 218, 0.04)', padding: '12px 14px', borderRadius: '10px', borderLeft: '3px solid var(--accent-color)' }}>
-                    <h4 style={{ fontSize: '0.8rem', color: 'var(--accent-color)', margin: '0 0 4px 0', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Rules / Takeaways:</h4>
+                {selectedLogModal.entryType === 'keynote' || selectedLogModal.keynoteContent ? (
+                  <div style={{ background: 'rgba(59, 130, 246, 0.05)', padding: '16px', borderRadius: '10px', borderLeft: '3px solid #3b82f6' }}>
+                    <h4 style={{ fontSize: '0.8rem', color: '#3b82f6', margin: '0 0 6px 0', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Keynote Content:</h4>
                     <p style={{ opacity: 0.95, fontSize: '0.95rem', margin: 0, lineHeight: '1.6', whiteSpace: 'pre-wrap' }}>
-                      {selectedLogModal.takeaways}
+                      {selectedLogModal.keynoteContent}
                     </p>
                   </div>
-                )}
-
-                {selectedLogModal.interviewNuggets && (
-                  <div style={{ background: 'rgba(245, 158, 11, 0.06)', padding: '12px 14px', borderRadius: '10px', borderLeft: '3px solid #f59e0b' }}>
-                    <h4 style={{ fontSize: '0.8rem', color: '#f59e0b', margin: '0 0 4px 0', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <FiAward /> Interview Nuggets:
-                    </h4>
-                    <p style={{ opacity: 0.95, fontSize: '0.95rem', margin: 0, lineHeight: '1.6', whiteSpace: 'pre-wrap' }}>
-                      {selectedLogModal.interviewNuggets}
-                    </p>
-                  </div>
-                )}
-
-                {selectedLogModal.codeSnippet && (
-                  <div>
-                    <h4 style={{ fontSize: '0.8rem', color: 'var(--accent-color)', margin: '0 0 6px 0', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Code Snippet:</h4>
-                    <div style={{ position: 'relative' }}>
-                      <div style={{
-                        background: '#020617',
-                        padding: '14px',
-                        borderRadius: '8px',
-                        border: '1px solid rgba(100, 255, 218, 0.2)',
-                        fontFamily: 'monospace',
-                        fontSize: '0.85rem',
-                        overflowX: 'auto',
-                        color: '#64ffda',
-                        maxHeight: '250px'
-                      }}>
-                        <pre style={{ margin: 0 }}>{selectedLogModal.codeSnippet}</pre>
+                ) : (
+                  <>
+                    {selectedLogModal.learnedContent && (
+                      <div>
+                        <h4 style={{ fontSize: '0.8rem', color: 'var(--accent-color)', margin: '0 0 4px 0', textTransform: 'uppercase', letterSpacing: '0.5px' }}>What I Learned:</h4>
+                        <p style={{ opacity: 0.9, fontSize: '0.95rem', margin: 0, lineHeight: '1.6', whiteSpace: 'pre-wrap' }}>
+                          {selectedLogModal.learnedContent}
+                        </p>
                       </div>
-                      <button
-                        onClick={(e) => handleCopyCode(selectedLogModal.codeSnippet, selectedLogModal.id, e)}
-                        style={{
-                          position: 'absolute',
-                          top: '10px',
-                          right: '10px',
-                          background: 'rgba(100, 255, 218, 0.1)',
-                          border: '1px solid rgba(100, 255, 218, 0.3)',
-                          color: 'var(--accent-color)',
-                          padding: '4px 10px',
-                          borderRadius: '6px',
-                          fontSize: '0.75rem',
-                          cursor: 'pointer',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '4px'
-                        }}
-                      >
-                        {copiedId === selectedLogModal.id ? <><FiCheck /> Copied</> : <><FiCopy /> Copy</>}
-                      </button>
-                    </div>
-                  </div>
+                    )}
+
+                    {selectedLogModal.takeaways && (
+                      <div style={{ background: 'rgba(100, 255, 218, 0.04)', padding: '12px 14px', borderRadius: '10px', borderLeft: '3px solid var(--accent-color)' }}>
+                        <h4 style={{ fontSize: '0.8rem', color: 'var(--accent-color)', margin: '0 0 4px 0', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Rules / Takeaways:</h4>
+                        <p style={{ opacity: 0.95, fontSize: '0.95rem', margin: 0, lineHeight: '1.6', whiteSpace: 'pre-wrap' }}>
+                          {selectedLogModal.takeaways}
+                        </p>
+                      </div>
+                    )}
+
+                    {selectedLogModal.interviewNuggets && (
+                      <div style={{ background: 'rgba(245, 158, 11, 0.06)', padding: '12px 14px', borderRadius: '10px', borderLeft: '3px solid #f59e0b' }}>
+                        <h4 style={{ fontSize: '0.8rem', color: '#f59e0b', margin: '0 0 4px 0', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <FiAward /> Interview Nuggets:
+                        </h4>
+                        <p style={{ opacity: 0.95, fontSize: '0.95rem', margin: 0, lineHeight: '1.6', whiteSpace: 'pre-wrap' }}>
+                          {selectedLogModal.interviewNuggets}
+                        </p>
+                      </div>
+                    )}
+
+                    {selectedLogModal.codeSnippet && (
+                      <div>
+                        <h4 style={{ fontSize: '0.8rem', color: 'var(--accent-color)', margin: '0 0 6px 0', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Code Snippet:</h4>
+                        <div style={{ position: 'relative' }}>
+                          <div style={{
+                            background: '#020617',
+                            padding: '14px',
+                            borderRadius: '8px',
+                            border: '1px solid rgba(100, 255, 218, 0.2)',
+                            fontFamily: 'monospace',
+                            fontSize: '0.85rem',
+                            overflowX: 'auto',
+                            color: '#64ffda',
+                            maxHeight: '250px'
+                          }}>
+                            <pre style={{ margin: 0 }}>{selectedLogModal.codeSnippet}</pre>
+                          </div>
+                          <button
+                            onClick={(e) => handleCopyCode(selectedLogModal.codeSnippet, selectedLogModal.id, e)}
+                            style={{
+                              position: 'absolute',
+                              top: '10px',
+                              right: '10px',
+                              background: 'rgba(100, 255, 218, 0.1)',
+                              border: '1px solid rgba(100, 255, 218, 0.3)',
+                              color: 'var(--accent-color)',
+                              padding: '4px 10px',
+                              borderRadius: '6px',
+                              fontSize: '0.75rem',
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '4px'
+                            }}
+                          >
+                            {copiedId === selectedLogModal.id ? <><FiCheck /> Copied</> : <><FiCopy /> Copy</>}
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </>
                 )}
 
                 <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '0.5rem' }}>
@@ -698,6 +756,46 @@ const Dashboard = () => {
 
                 <form onSubmit={handleSaveLog} style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem', width: '100%', boxSizing: 'border-box' }}>
                   
+                  {/* Entry Type Toggle */}
+                  <div style={{ display: 'flex', background: 'var(--bg-color)', padding: '4px', borderRadius: '8px', border: '1px solid rgba(100, 255, 218, 0.2)', marginBottom: '0.25s' }}>
+                    <button
+                      type="button"
+                      onClick={() => setEntryType('full')}
+                      style={{
+                        flex: 1,
+                        background: entryType === 'full' ? 'var(--accent-color)' : 'transparent',
+                        color: entryType === 'full' ? '#050b14' : 'var(--text-color)',
+                        border: 'none',
+                        padding: '8px',
+                        borderRadius: '6px',
+                        fontSize: '0.82rem',
+                        fontWeight: '600',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s'
+                      }}
+                    >
+                      Full Lesson Log
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setEntryType('keynote')}
+                      style={{
+                        flex: 1,
+                        background: entryType === 'keynote' ? '#3b82f6' : 'transparent',
+                        color: entryType === 'keynote' ? '#ffffff' : 'var(--text-color)',
+                        border: 'none',
+                        padding: '8px',
+                        borderRadius: '6px',
+                        fontSize: '0.82rem',
+                        fontWeight: '600',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s'
+                      }}
+                    >
+                      Keynote / Quick Note
+                    </button>
+                  </div>
+
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', width: '100%', boxSizing: 'border-box' }}>
                     <div style={{ width: '100%', boxSizing: 'border-box' }}>
                       <label style={labelStyle}>Day Number</label>
@@ -717,28 +815,37 @@ const Dashboard = () => {
 
                   <div style={{ width: '100%', boxSizing: 'border-box' }}>
                     <label style={labelStyle}>Topic Title</label>
-                    <input type="text" placeholder="e.g. Polynomial Regression" value={topic} onChange={(e) => setTopic(e.target.value)} required style={inputStyle} />
+                    <input type="text" placeholder="e.g. Outlier Treatment Rule" value={topic} onChange={(e) => setTopic(e.target.value)} required style={inputStyle} />
                   </div>
 
-                  <div style={{ width: '100%', boxSizing: 'border-box' }}>
-                    <label style={labelStyle}>1. What I Learned (What is it & Why is it used?)</label>
-                    <textarea rows="3" placeholder="Explain in your own words..." value={learnedContent} onChange={(e) => setLearnedContent(e.target.value)} style={{ ...inputStyle, resize: 'vertical' }} />
-                  </div>
+                  {entryType === 'keynote' ? (
+                    <div style={{ width: '100%', boxSizing: 'border-box' }}>
+                      <label style={{ ...labelStyle, color: '#3b82f6', fontWeight: '600' }}>Keynote Content / Quick Note</label>
+                      <textarea rows="5" placeholder="Write down your key observation or summary note without strict formatting..." value={keynoteContent} onChange={(e) => setKeynoteContent(e.target.value)} required style={{ ...inputStyle, borderColor: 'rgba(59, 130, 246, 0.4)', resize: 'vertical' }} />
+                    </div>
+                  ) : (
+                    <>
+                      <div style={{ width: '100%', boxSizing: 'border-box' }}>
+                        <label style={labelStyle}>1. What I Learned (What is it & Why is it used?)</label>
+                        <textarea rows="3" placeholder="Explain in your own words..." value={learnedContent} onChange={(e) => setLearnedContent(e.target.value)} style={{ ...inputStyle, resize: 'vertical' }} />
+                      </div>
 
-                  <div style={{ width: '100%', boxSizing: 'border-box' }}>
-                    <label style={labelStyle}>2. Rules / Key Takeaways (Crucial for later)</label>
-                    <textarea rows="3" placeholder="Bullet points or practical rules..." value={takeaways} onChange={(e) => setTakeaways(e.target.value)} style={{ ...inputStyle, resize: 'vertical' }} />
-                  </div>
+                      <div style={{ width: '100%', boxSizing: 'border-box' }}>
+                        <label style={labelStyle}>2. Rules / Key Takeaways (Crucial for later)</label>
+                        <textarea rows="3" placeholder="Bullet points or practical rules..." value={takeaways} onChange={(e) => setTakeaways(e.target.value)} style={{ ...inputStyle, resize: 'vertical' }} />
+                      </div>
 
-                  <div style={{ width: '100%', boxSizing: 'border-box' }}>
-                    <label style={{ ...labelStyle, color: '#f59e0b', fontWeight: '600' }}>3. 🧠 Interview Nuggets (Common questions & tricky interview concepts)</label>
-                    <textarea rows="3" placeholder="Add specific interview tips or trap questions for this topic..." value={interviewNuggets} onChange={(e) => setInterviewNuggets(e.target.value)} style={{ ...inputStyle, borderColor: 'rgba(245, 158, 11, 0.3)', resize: 'vertical' }} />
-                  </div>
+                      <div style={{ width: '100%', boxSizing: 'border-box' }}>
+                        <label style={{ ...labelStyle, color: '#f59e0b', fontWeight: '600' }}>3. 🧠 Interview Nuggets (Common questions & tricky interview concepts)</label>
+                        <textarea rows="3" placeholder="Add specific interview tips or trap questions for this topic..." value={interviewNuggets} onChange={(e) => setInterviewNuggets(e.target.value)} style={{ ...inputStyle, borderColor: 'rgba(245, 158, 11, 0.3)', resize: 'vertical' }} />
+                      </div>
 
-                  <div style={{ width: '100%', boxSizing: 'border-box' }}>
-                    <label style={labelStyle}>4. Code Snippet (Optional)</label>
-                    <textarea rows="3" placeholder="Paste python/js snippet..." value={codeSnippet} onChange={(e) => setCodeSnippet(e.target.value)} style={{ ...inputStyle, fontFamily: 'monospace', background: '#020617', resize: 'vertical' }} />
-                  </div>
+                      <div style={{ width: '100%', boxSizing: 'border-box' }}>
+                        <label style={labelStyle}>4. Code Snippet (Optional)</label>
+                        <textarea rows="3" placeholder="Paste python/js snippet..." value={codeSnippet} onChange={(e) => setCodeSnippet(e.target.value)} style={{ ...inputStyle, fontFamily: 'monospace', background: '#020617', resize: 'vertical' }} />
+                      </div>
+                    </>
+                  )}
 
                   <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.5rem', width: '100%', boxSizing: 'border-box' }}>
                     <button type="button" onClick={() => setIsModalOpen(false)} style={{
@@ -747,9 +854,9 @@ const Dashboard = () => {
                       Cancel
                     </button>
                     <button type="submit" style={{
-                      flex: 1, background: 'var(--accent-color)', color: '#050b14', padding: '10px', borderRadius: '8px', fontWeight: '600', border: 'none', cursor: 'pointer', fontSize: '0.9rem'
+                      flex: 1, background: entryType === 'keynote' ? '#3b82f6' : 'var(--accent-color)', color: entryType === 'keynote' ? '#ffffff' : '#050b14', padding: '10px', borderRadius: '8px', fontWeight: '600', border: 'none', cursor: 'pointer', fontSize: '0.9rem'
                     }}>
-                      {editingId ? 'Update Lesson' : 'Save Lesson'}
+                      {editingId ? 'Update Entry' : 'Save Entry'}
                     </button>
                   </div>
                 </form>
