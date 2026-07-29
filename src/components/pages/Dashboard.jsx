@@ -5,7 +5,7 @@ import { signOut, signInWithEmailAndPassword } from 'firebase/auth';
 import { useNavigate } from 'react-router-dom';
 import Navbar from '../common/Navbar';
 import Footer from '../common/Footer';
-import { FiPlus, FiLogOut, FiSearch, FiCopy, FiCheck, FiTrash2, FiCode, FiArrowLeft, FiTerminal, FiTrendingUp, FiCpu, FiLayers, FiShield, FiEye, FiEyeOff, FiLoader, FiBookOpen, FiEdit2 } from 'react-icons/fi';
+import { FiPlus, FiLogOut, FiSearch, FiCopy, FiCheck, FiTrash2, FiCode, FiArrowLeft, FiTerminal, FiTrendingUp, FiCpu, FiLayers, FiShield, FiEye, FiEyeOff, FiLoader, FiBookOpen, FiEdit2, FiAward, FiMaximize2 } from 'react-icons/fi';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const Dashboard = () => {
@@ -15,12 +15,16 @@ const Dashboard = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);
   
-  // Clean 4-Part Form State
+  // Full Card View Modal State
+  const [selectedLogModal, setSelectedLogModal] = useState(null);
+  
+  // Clean Form State with Interview Nuggets Field
   const [dayNumber, setDayNumber] = useState('');
   const [category, setCategory] = useState('Preprocessing');
   const [topic, setTopic] = useState('');
   const [learnedContent, setLearnedContent] = useState('');
   const [takeaways, setTakeaways] = useState('');
+  const [interviewNuggets, setInterviewNuggets] = useState('');
   const [codeSnippet, setCodeSnippet] = useState('');
 
   // Confirmation & Security State with Loading & Eye Toggle
@@ -68,17 +72,20 @@ const Dashboard = () => {
     setTopic('');
     setLearnedContent('');
     setTakeaways('');
+    setInterviewNuggets('');
     setCodeSnippet('');
     setIsModalOpen(true);
   };
 
-  const handleOpenEdit = (log) => {
+  const handleOpenEdit = (log, e) => {
+    if (e) e.stopPropagation();
     setEditingId(log.id);
     setDayNumber(log.dayNumber || '');
     setCategory(log.category || 'Preprocessing');
     setTopic(log.title || '');
     setLearnedContent(log.learnedContent || '');
     setTakeaways(log.takeaways || '');
+    setInterviewNuggets(log.interviewNuggets || '');
     setCodeSnippet(log.codeSnippet || '');
     setIsModalOpen(true);
   };
@@ -92,6 +99,7 @@ const Dashboard = () => {
         title: topic,
         learnedContent,
         takeaways,
+        interviewNuggets,
         codeSnippet,
         updatedAt: new Date()
       };
@@ -111,6 +119,7 @@ const Dashboard = () => {
       setTopic('');
       setLearnedContent('');
       setTakeaways('');
+      setInterviewNuggets('');
       setCodeSnippet('');
       setIsModalOpen(false);
       fetchLogs();
@@ -119,7 +128,8 @@ const Dashboard = () => {
     }
   };
 
-  const promptDelete = (id) => {
+  const promptDelete = (id, e) => {
+    if (e) e.stopPropagation();
     setDeletePassword('');
     setShowPassword(false);
     setDeleteError('');
@@ -171,7 +181,8 @@ const Dashboard = () => {
     }
   };
 
-  const handleCopyCode = (code, id) => {
+  const handleCopyCode = (code, id, e) => {
+    if (e) e.stopPropagation();
     navigator.clipboard.writeText(code);
     setCopiedId(id);
     showToast('Code snippet copied to clipboard!');
@@ -190,7 +201,8 @@ const Dashboard = () => {
       !searchTerm || 
       (log.title && log.title.toLowerCase().includes(queryText)) ||
       (log.learnedContent && log.learnedContent.toLowerCase().includes(queryText)) ||
-      (log.takeaways && log.takeaways.toLowerCase().includes(queryText));
+      (log.takeaways && log.takeaways.toLowerCase().includes(queryText)) ||
+      (log.interviewNuggets && log.interviewNuggets.toLowerCase().includes(queryText));
       
     return matchesCategory && matchesSearch;
   }) : [];
@@ -370,31 +382,38 @@ const Dashboard = () => {
                 </div>
               ) : (
                 filteredLogs.map(log => (
-                  <div key={log.id} style={{
-                    background: 'var(--card-bg)',
-                    padding: '1.25rem',
-                    borderRadius: '12px',
-                    border: '1px solid rgba(100, 255, 218, 0.15)',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    justifyContent: 'space-between',
-                    boxShadow: '0 8px 20px rgba(0,0,0,0.2)'
-                  }}>
+                  <motion.div 
+                    key={log.id} 
+                    whileHover={{ scale: 1.01 }}
+                    onClick={() => setSelectedLogModal(log)}
+                    style={{
+                      background: 'var(--card-bg)',
+                      padding: '1.25rem',
+                      borderRadius: '12px',
+                      border: '1px solid rgba(100, 255, 218, 0.15)',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      justifyContent: 'space-between',
+                      boxShadow: '0 8px 20px rgba(0,0,0,0.2)',
+                      cursor: 'pointer',
+                      position: 'relative'
+                    }}
+                  >
                     <div>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
                         <span style={{ background: 'rgba(100, 255, 218, 0.1)', color: 'var(--accent-color)', padding: '3px 10px', borderRadius: '12px', fontSize: '0.75rem', fontWeight: '600' }}>
                           Day {log.dayNumber}
                         </span>
-                        <div style={{ display: 'flex', gap: '8px' }}>
+                        <div style={{ display: 'flex', gap: '8px' }} onClick={(e) => e.stopPropagation()}>
                           <button 
-                            onClick={() => handleOpenEdit(log)}
+                            onClick={(e) => handleOpenEdit(log, e)}
                             title="Edit Entry"
                             style={{ background: 'transparent', border: 'none', color: 'var(--accent-color)', cursor: 'pointer', opacity: 0.8, padding: '4px' }}
                           >
                             <FiEdit2 size={16} />
                           </button>
                           <button 
-                            onClick={() => promptDelete(log.id)}
+                            onClick={(e) => promptDelete(log.id, e)}
                             title="Delete Entry"
                             style={{ background: 'transparent', border: 'none', color: '#ef4444', cursor: 'pointer', opacity: 0.8, padding: '4px' }}
                           >
@@ -403,29 +422,45 @@ const Dashboard = () => {
                         </div>
                       </div>
 
-                      <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1.15rem' }}>{log.title}</h3>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px' }}>
+                        <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1.15rem' }}>{log.title}</h3>
+                        <span style={{ fontSize: '0.75rem', color: 'var(--accent-color)', display: 'flex', alignItems: 'center', gap: '4px', opacity: 0.7, whiteSpace: 'nowrap' }}>
+                          <FiMaximize2 size={12} /> Expand
+                        </span>
+                      </div>
                       
                       {log.learnedContent && (
                         <div style={{ marginBottom: '0.75rem' }}>
                           <span style={{ fontSize: '0.75rem', color: 'var(--accent-color)', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px' }}>What I Learned:</span>
-                          <p style={{ opacity: 0.85, fontSize: '0.88rem', margin: '2px 0 0 0', lineHeight: '1.5', whiteSpace: 'pre-wrap' }}>
+                          <p style={{ opacity: 0.85, fontSize: '0.88rem', margin: '2px 0 0 0', lineHeight: '1.5', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
                             {log.learnedContent}
                           </p>
                         </div>
                       )}
 
                       {log.takeaways && (
-                        <div style={{ marginBottom: '1rem', background: 'rgba(100, 255, 218, 0.03)', padding: '10px', borderRadius: '8px', borderLeft: '3px solid var(--accent-color)' }}>
+                        <div style={{ marginBottom: '0.75rem', background: 'rgba(100, 255, 218, 0.03)', padding: '8px 10px', borderRadius: '8px', borderLeft: '3px solid var(--accent-color)' }}>
                           <span style={{ fontSize: '0.75rem', color: 'var(--accent-color)', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Rules / Takeaways:</span>
-                          <p style={{ opacity: 0.9, fontSize: '0.88rem', margin: '2px 0 0 0', lineHeight: '1.5', whiteSpace: 'pre-wrap' }}>
+                          <p style={{ opacity: 0.9, fontSize: '0.88rem', margin: '2px 0 0 0', lineHeight: '1.4', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
                             {log.takeaways}
+                          </p>
+                        </div>
+                      )}
+
+                      {log.interviewNuggets && (
+                        <div style={{ marginBottom: '1rem', background: 'rgba(245, 158, 11, 0.05)', padding: '8px 10px', borderRadius: '8px', borderLeft: '3px solid #f59e0b' }}>
+                          <span style={{ fontSize: '0.75rem', color: '#f59e0b', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                            <FiAward size={12} /> Interview Nuggets:
+                          </span>
+                          <p style={{ opacity: 0.9, fontSize: '0.88rem', margin: '2px 0 0 0', lineHeight: '1.4', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                            {log.interviewNuggets}
                           </p>
                         </div>
                       )}
                     </div>
 
                     {log.codeSnippet && (
-                      <div style={{ position: 'relative', marginTop: 'auto' }}>
+                      <div style={{ position: 'relative', marginTop: 'auto' }} onClick={(e) => e.stopPropagation()}>
                         <div style={{
                           background: '#020617',
                           padding: '10px',
@@ -435,12 +470,12 @@ const Dashboard = () => {
                           fontSize: '0.8rem',
                           overflowX: 'auto',
                           color: '#64ffda',
-                          maxHeight: '160px'
+                          maxHeight: '100px'
                         }}>
                           <pre style={{ margin: 0 }}>{log.codeSnippet}</pre>
                         </div>
                         <button
-                          onClick={() => handleCopyCode(log.codeSnippet, log.id)}
+                          onClick={(e) => handleCopyCode(log.codeSnippet, log.id, e)}
                           style={{
                             position: 'absolute',
                             top: '6px',
@@ -461,12 +496,158 @@ const Dashboard = () => {
                         </button>
                       </div>
                     )}
-                  </div>
+                  </motion.div>
                 ))
               )}
             </div>
           </div>
         )}
+
+        {/* Full Card Detail Modal (When Card is Clicked) */}
+        <AnimatePresence>
+          {selectedLogModal && (
+            <div style={{
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              width: '100vw',
+              height: '100vh',
+              background: 'rgba(5, 11, 20, 0.85)',
+              backdropFilter: 'blur(5px)',
+              display: 'flex',
+              justifyContent: 'center',
+              alignItems: 'center',
+              zIndex: 1100,
+              padding: '1rem',
+              boxSizing: 'border-box'
+            }}>
+              <motion.div 
+                initial={{ opacity: 0, scale: 0.98 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.98 }}
+                style={{
+                  background: 'var(--card-bg)',
+                  padding: '2rem 1.5rem',
+                  borderRadius: '16px',
+                  border: '1px solid rgba(100, 255, 218, 0.3)',
+                  width: '100%',
+                  maxWidth: '650px',
+                  maxHeight: '90vh',
+                  overflowY: 'auto',
+                  boxShadow: '0 25px 50px rgba(0,0,0,0.5)',
+                  boxSizing: 'border-box',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '1.25rem'
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                    <span style={{ background: 'rgba(100, 255, 218, 0.1)', color: 'var(--accent-color)', padding: '4px 12px', borderRadius: '12px', fontSize: '0.8rem', fontWeight: '600' }}>
+                      Day {selectedLogModal.dayNumber}
+                    </span>
+                    <span style={{ fontSize: '0.85rem', opacity: 0.7, fontWeight: '500' }}>
+                      {selectedLogModal.category}
+                    </span>
+                  </div>
+                  <button 
+                    onClick={() => setSelectedLogModal(null)}
+                    style={{ background: 'transparent', border: 'none', color: 'var(--text-color)', fontSize: '1.2rem', cursor: 'pointer', opacity: 0.7 }}
+                  >
+                    ✕
+                  </button>
+                </div>
+
+                <h2 style={{ margin: 0, fontSize: '1.5rem', color: 'var(--accent-color)' }}>{selectedLogModal.title}</h2>
+
+                {selectedLogModal.learnedContent && (
+                  <div>
+                    <h4 style={{ fontSize: '0.8rem', color: 'var(--accent-color)', margin: '0 0 4px 0', textTransform: 'uppercase', letterSpacing: '0.5px' }}>What I Learned:</h4>
+                    <p style={{ opacity: 0.9, fontSize: '0.95rem', margin: 0, lineHeight: '1.6', whiteSpace: 'pre-wrap' }}>
+                      {selectedLogModal.learnedContent}
+                    </p>
+                  </div>
+                )}
+
+                {selectedLogModal.takeaways && (
+                  <div style={{ background: 'rgba(100, 255, 218, 0.04)', padding: '12px 14px', borderRadius: '10px', borderLeft: '3px solid var(--accent-color)' }}>
+                    <h4 style={{ fontSize: '0.8rem', color: 'var(--accent-color)', margin: '0 0 4px 0', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Rules / Takeaways:</h4>
+                    <p style={{ opacity: 0.95, fontSize: '0.95rem', margin: 0, lineHeight: '1.6', whiteSpace: 'pre-wrap' }}>
+                      {selectedLogModal.takeaways}
+                    </p>
+                  </div>
+                )}
+
+                {selectedLogModal.interviewNuggets && (
+                  <div style={{ background: 'rgba(245, 158, 11, 0.06)', padding: '12px 14px', borderRadius: '10px', borderLeft: '3px solid #f59e0b' }}>
+                    <h4 style={{ fontSize: '0.8rem', color: '#f59e0b', margin: '0 0 4px 0', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <FiAward /> Interview Nuggets:
+                    </h4>
+                    <p style={{ opacity: 0.95, fontSize: '0.95rem', margin: 0, lineHeight: '1.6', whiteSpace: 'pre-wrap' }}>
+                      {selectedLogModal.interviewNuggets}
+                    </p>
+                  </div>
+                )}
+
+                {selectedLogModal.codeSnippet && (
+                  <div>
+                    <h4 style={{ fontSize: '0.8rem', color: 'var(--accent-color)', margin: '0 0 6px 0', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Code Snippet:</h4>
+                    <div style={{ position: 'relative' }}>
+                      <div style={{
+                        background: '#020617',
+                        padding: '14px',
+                        borderRadius: '8px',
+                        border: '1px solid rgba(100, 255, 218, 0.2)',
+                        fontFamily: 'monospace',
+                        fontSize: '0.85rem',
+                        overflowX: 'auto',
+                        color: '#64ffda',
+                        maxHeight: '250px'
+                      }}>
+                        <pre style={{ margin: 0 }}>{selectedLogModal.codeSnippet}</pre>
+                      </div>
+                      <button
+                        onClick={(e) => handleCopyCode(selectedLogModal.codeSnippet, selectedLogModal.id, e)}
+                        style={{
+                          position: 'absolute',
+                          top: '10px',
+                          right: '10px',
+                          background: 'rgba(100, 255, 218, 0.1)',
+                          border: '1px solid rgba(100, 255, 218, 0.3)',
+                          color: 'var(--accent-color)',
+                          padding: '4px 10px',
+                          borderRadius: '6px',
+                          fontSize: '0.75rem',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '4px'
+                        }}
+                      >
+                        {copiedId === selectedLogModal.id ? <><FiCheck /> Copied</> : <><FiCopy /> Copy</>}
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '0.5rem' }}>
+                  <button 
+                    onClick={(e) => { const log = selectedLogModal; setSelectedLogModal(null); handleOpenEdit(log, e); }}
+                    style={{ background: 'transparent', border: '1px solid var(--accent-color)', color: 'var(--accent-color)', padding: '8px 16px', borderRadius: '8px', cursor: 'pointer', fontWeight: '600', fontSize: '0.9rem' }}
+                  >
+                    Edit Entry
+                  </button>
+                  <button 
+                    onClick={() => setSelectedLogModal(null)}
+                    style={{ background: 'var(--accent-color)', color: '#050b14', border: 'none', padding: '8px 16px', borderRadius: '8px', cursor: 'pointer', fontWeight: '600', fontSize: '0.9rem' }}
+                  >
+                    Close
+                  </button>
+                </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
 
         {/* Modal Form for Create/Edit */}
         <AnimatePresence>
@@ -496,7 +677,7 @@ const Dashboard = () => {
                   borderRadius: '16px',
                   border: '1px solid rgba(100, 255, 218, 0.2)',
                   width: '100%',
-                  maxWidth: '440px',
+                  maxWidth: '480px',
                   maxHeight: '90vh',
                   overflowY: 'auto',
                   boxShadow: '0 20px 40px rgba(0,0,0,0.4)',
@@ -550,7 +731,12 @@ const Dashboard = () => {
                   </div>
 
                   <div style={{ width: '100%', boxSizing: 'border-box' }}>
-                    <label style={labelStyle}>3. Code Snippet (Optional)</label>
+                    <label style={{ ...labelStyle, color: '#f59e0b', fontWeight: '600' }}>3. 🧠 Interview Nuggets (Common questions & tricky interview concepts)</label>
+                    <textarea rows="3" placeholder="Add specific interview tips or trap questions for this topic..." value={interviewNuggets} onChange={(e) => setInterviewNuggets(e.target.value)} style={{ ...inputStyle, borderColor: 'rgba(245, 158, 11, 0.3)', resize: 'vertical' }} />
+                  </div>
+
+                  <div style={{ width: '100%', boxSizing: 'border-box' }}>
+                    <label style={labelStyle}>4. Code Snippet (Optional)</label>
                     <textarea rows="3" placeholder="Paste python/js snippet..." value={codeSnippet} onChange={(e) => setCodeSnippet(e.target.value)} style={{ ...inputStyle, fontFamily: 'monospace', background: '#020617', resize: 'vertical' }} />
                   </div>
 
